@@ -1,0 +1,152 @@
+@import "tailwindcss";
+
+/* =========================================================
+   Doble Chevron — Brand Color System
+   Paleta extraída del logo: terracota #CC4422, crema #F2E2B8, café oscuro #2A1A0A
+   ========================================================= */
+
+@theme {
+  /* Remap 'orange' → escala terracota Doble Chevron */
+  --color-orange-50: #FEF4EF;
+  --color-orange-100: #FDE6D9;
+  --color-orange-200: #FBCAB4;
+  --color-orange-300: #F7A28A;
+  --color-orange-400: #F07158;
+  --color-orange-500: #CC4422;
+  --color-orange-600: #B83918;
+  --color-orange-700: #962D13;
+  --color-orange-800: #7A240F;
+  --color-orange-900: #65200D;
+  --color-orange-950: #3D1208;
+
+  /* Remap 'gray' → escala café cálido */
+  --color-gray-50: #FAF6F2;
+  --color-gray-100: #F0E8E0;
+  --color-gray-200: #DDD0C4;
+  --color-gray-300: #C5AE9E;
+  --color-gray-400: #A88878;
+  --color-gray-500: #8C6A5A;
+  --color-gray-600: #6D5048;
+  --color-gray-700: #55403A;
+  --color-gray-800: #3D302B;
+  --color-gray-900: #2A1A0A;
+  --color-gray-950: #160C04;
+}
+
+:root {
+  --background: #FAF6F2;
+  --foreground: #2A1A0A;
+
+  /* Doble Chevron Brand Palette */
+  --doble-chevron-cream: #F2E2B8;
+  --doble-chevron-bg: #FAF6F2;
+  --doble-chevron-primary: #CC4422;
+  --doble-chevron-primary-dark: #962D13;
+  --doble-chevron-text: #2A1A0A;
+  --doble-chevron-muted: #8C6A5A;
+  --doble-chevron-border: rgba(42, 26, 10, 0.15);
+  --doble-chevron-shadow: 0 14px 34px rgba(42, 26, 10, 0.10);
+
+  /* Status Colors */
+  --doble-chevron-green: #10b981;
+  --doble-chevron-green-dark: #0f5a38;
+  --doble-chevron-orange: #f97316;
+  --doble-chevron-blue: #3b82f6;
+  --doble-chevron-purple: #8b5cf6;
+  --doble-chevron-cyan: #06b6d4;
+  --doble-chevron-red: #d83a3a;
+
+  /* Card Backgrounds */
+  --doble-chevron-card: rgba(255, 248, 242, 0.94);
+  --doble-chevron-card-alt: rgba(242, 226, 184, 0.78);
+}
+
+:root {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #2A1A0A;
+    --foreground: #F2E2B8;
+    --doble-chevron-bg: #2A1A0A;
+    --doble-chevron-cream: #3D2A18;
+    --doble-chevron-card: rgba(61, 42, 24, 0.94);
+    --doble-chevron-card-alt: rgba(61, 42, 24, 0.78);
+    --doble-chevron-text: #F2E2B8;
+    --doble-chevron-muted: #B09A88;
+    --doble-chevron-border: rgba(242, 226, 184, 0.15);
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+}
+
+/* Doble Chevron Dashboard Gradient Background */
+.doble-chevron-bg-gradient {
+  background:
+    radial-gradient(1100px 520px at 80% -10%, rgba(204, 68, 34, 0.18), transparent 55%),
+    radial-gradient(900px 480px at 10% 0%, rgba(150, 45, 19, 0.12), transparent 60%),
+    var(--doble-chevron-bg);
+}
+
+/* Glass Card Effect */
+.doble-chevron-card {
+  background: var(--doble-chevron-card);
+  border: 1px solid var(--doble-chevron-border);
+  border-radius: 18px;
+  box-shadow: var(--doble-chevron-shadow);
+  backdrop-filter: blur(8px);
+}
+
+/* Animated bar fill */
+.bar-fill {
+  transition: width 0.45s ease;
+}
+
+/* Custom scrollbar for tables */
+.doble-chevron-scrollbar::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+.doble-chevron-scrollbar::-webkit-scrollbar-track {
+  background: var(--doble-chevron-border);
+  border-radius: 3px;
+}
+
+.doble-chevron-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--doble-chevron-muted);
+  border-radius: 3px;
+}
+
+.doble-chevron-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--doble-chevron-primary);
+}
+
+/* Skeleton loader animation */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--doble-chevron-border) 25%,
+    var(--doble-chevron-cream) 50%,
+    var(--doble-chevron-border) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
