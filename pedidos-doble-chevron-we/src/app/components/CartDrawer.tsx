@@ -66,6 +66,9 @@ export default function CartDrawer() {
     try {
       const apiUrl = getApiUrl();
       const userId = getUserIdFromToken()
+      if (!userId) {
+        throw new Error('No hay sesión activa. Por favor inicia sesión nuevamente.')
+      }
       const orderRes = await fetchWithAuth(`${apiUrl}/api/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -121,13 +124,13 @@ export default function CartDrawer() {
         })),
       }
 
+      clearCart()
       setSuccess(true)
       downloadTicket(order, payment!)
 
       setTimeout(() => {
         setSuccess(false)
         closeDrawer()
-        clearCart()
         router.push('/products')
       }, 2000)
     } catch (err) {

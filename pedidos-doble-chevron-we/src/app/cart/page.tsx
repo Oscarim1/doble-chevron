@@ -47,6 +47,9 @@ export default function CartPage() {
     try {
       const apiUrl = getApiUrl();
       const userId = getUserIdFromToken()
+      if (!userId) {
+        throw new Error('No hay sesión activa. Por favor inicia sesión nuevamente.')
+      }
       const orderRes = await fetchWithAuth(`${apiUrl}/api/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -102,15 +105,10 @@ export default function CartPage() {
         })),
       }
 
+      clearCart()
       setSuccess(true)
       // Genera los PDFs y los descarga
       generatePDFs(order)
-
-      setTimeout(() => {
-        setSuccess(false)
-        router.push('/products')
-        clearCart()
-      }, 2000)
     } catch (err) {
       setError((err as Error).message || 'Error procesando pedido')
     } finally {
