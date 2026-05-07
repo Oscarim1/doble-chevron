@@ -47,6 +47,9 @@ export default function CartPage() {
     try {
       const apiUrl = getApiUrl();
       const userId = getUserIdFromToken()
+      if (!userId) {
+        throw new Error('No hay sesión activa. Por favor inicia sesión nuevamente.')
+      }
       const orderRes = await fetchWithAuth(`${apiUrl}/api/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

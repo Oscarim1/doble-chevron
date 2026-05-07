@@ -35,12 +35,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
     try {
       const stored = localStorage.getItem('cart')
       if (stored) setItems(JSON.parse(stored))
-    } catch {}
+    } catch (err) {
+      console.error('CartContext: error al cargar carrito desde localStorage', err)
+      localStorage.removeItem('cart')
+    }
   }, [])
 
   // Persist to localStorage
   useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(items))
+    try {
+      localStorage.setItem('cart', JSON.stringify(items))
+    } catch (err) {
+      console.error('CartContext: error al guardar carrito en localStorage', err)
+    }
   }, [items])
 
   const addItem = (item: Omit<CartItem, 'quantity'>) => {

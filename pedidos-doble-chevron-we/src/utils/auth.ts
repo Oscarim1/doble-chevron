@@ -8,6 +8,13 @@ export const parseTokenPayload = () => {
   }
 };
 
+export const isTokenExpired = (): boolean => {
+  const payload = parseTokenPayload();
+  if (!payload?.exp) return true;
+  // Add 10s buffer to account for clock skew
+  return Date.now() / 1000 >= payload.exp - 10;
+};
+
 export const getUserIdFromToken = () => {
   const payload = parseTokenPayload();
   return payload ? payload.id || payload.user_id || payload.sub || null : null;
