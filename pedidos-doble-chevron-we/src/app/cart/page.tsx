@@ -105,7 +105,6 @@ export default function CartPage() {
         })),
       }
 
-      clearCart()
       setSuccess(true)
       // Genera los PDFs y los descarga
       generatePDFs(order)
@@ -113,6 +112,7 @@ export default function CartPage() {
       setTimeout(() => {
         setSuccess(false)
         router.push('/products')
+        clearCart()
       }, 2000)
     } catch (err) {
       setError((err as Error).message || 'Error procesando pedido')
