@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
-import { HiX, HiShoppingCart } from 'react-icons/hi'
+import { HiX, HiShoppingCart, HiMenu } from 'react-icons/hi'
 import LogoTopBar from './LogoTopBar'
 import { useCart } from '../../context/CartContext'
 import { useCartDrawer } from '../../context/CartDrawerContext'
@@ -96,9 +96,15 @@ export default function TopBar() {
       <header className="w-full sticky top-0 z-30 shadow-lg" style={{ backgroundColor: '#CC4422' }}>
         <nav className="max-w-7xl mx-auto flex items-center justify-between px-4 py-3 gap-4">
 
-          {/* Izquierda: hamburguesa + logo + estrella */}
+          {/* Izquierda: hamburguesa (solo mobile) + logo */}
           <div className="flex items-center gap-3">
-
+            <button
+              className="md:hidden text-[#F2E2B8] hover:text-white transition p-1"
+              aria-label="Abrir menú"
+              onClick={() => setOpen(true)}
+            >
+              <HiMenu size={26} />
+            </button>
             <Link href="/" className="flex items-center gap-2" onClick={() => handleNavigate('/')}>
               <LogoTopBar className="h-13 w-auto" />
             </Link>
