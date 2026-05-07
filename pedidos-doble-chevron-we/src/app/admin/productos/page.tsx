@@ -45,6 +45,7 @@ interface FormState {
   precio_puntos: string
   category: string
   sub_category: string
+  barcode: string
   is_active: boolean
 }
 
@@ -57,6 +58,7 @@ const initialFormState: FormState = {
   precio_puntos: '0',
   category: '',
   sub_category: '',
+  barcode: '',
   is_active: true,
 }
 
@@ -92,7 +94,8 @@ export default function AdminProductosPage() {
       (p) =>
         p.name.toLowerCase().includes(termino) ||
         p.category?.toLowerCase().includes(termino) ||
-        p.sub_category?.toLowerCase().includes(termino)
+        p.sub_category?.toLowerCase().includes(termino) ||
+        p.barcode?.toLowerCase().includes(termino)
     )
   }, [productos, busqueda])
 
@@ -116,6 +119,7 @@ export default function AdminProductosPage() {
       precio_puntos: String(producto.precio_puntos || 0),
       category: producto.category || '',
       sub_category: producto.sub_category || '',
+      barcode: producto.barcode || '',
       is_active: Boolean(producto.is_active),
     })
     setErrorForm(null)
@@ -142,6 +146,7 @@ export default function AdminProductosPage() {
       precio_puntos: Number(form.precio_puntos) || 0,
       category: form.category || null,
       sub_category: form.sub_category.trim() || null,
+      barcode: form.barcode.trim() || null,
       is_active: form.is_active,
     }
 
@@ -206,7 +211,7 @@ export default function AdminProductosPage() {
               type="text"
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Buscar por nombre o categoria..."
+              placeholder="Buscar por nombre, categoria o barcode..."
               className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200 font-semibold text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
             />
             {busqueda && (
@@ -290,6 +295,11 @@ export default function AdminProductosPage() {
                     <p className="text-xs text-gray-400 mt-1">
                       {producto.category}
                       {producto.sub_category && ` > ${producto.sub_category}`}
+                    </p>
+                  )}
+                  {producto.barcode && (
+                    <p className="text-xs text-gray-400 font-mono mt-0.5">
+                      {producto.barcode}
                     </p>
                   )}
 
@@ -465,6 +475,20 @@ export default function AdminProductosPage() {
                         rows={2}
                         className="w-full px-4 py-2 rounded-xl border border-gray-200 font-semibold text-gray-900 resize-none focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
                         placeholder="Descripcion del producto..."
+                      />
+                    </div>
+
+                    {/* Barcode */}
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">
+                        Codigo de barras
+                      </label>
+                      <input
+                        type="text"
+                        value={form.barcode}
+                        onChange={(e) => setForm({ ...form, barcode: e.target.value })}
+                        className="w-full px-4 py-2 rounded-xl border border-gray-200 font-mono text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
+                        placeholder="Ej: 7501055300522"
                       />
                     </div>
 

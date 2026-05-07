@@ -15,6 +15,7 @@ export interface Producto {
   precio_puntos: number;
   category: string | null;
   sub_category: string | null;
+  barcode: string | null;
   is_active: number | boolean;
   track_stock: number | boolean;
   created_at: string;
@@ -30,6 +31,7 @@ export interface ProductoPayload {
   precio_puntos?: number;
   category?: string | null;
   sub_category?: string | null;
+  barcode?: string | null;
   is_active?: boolean;
 }
 
@@ -76,6 +78,16 @@ export async function getProducto(id: string): Promise<Producto> {
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(errorText || 'Error al obtener producto');
+  }
+  return response.json();
+}
+
+// Obtener producto por barcode
+export async function getProductoByBarcode(barcode: string): Promise<Producto> {
+  const response = await fetchWithAuth(`${API_BASE_URL}/api/products/barcode/${encodeURIComponent(barcode)}`);
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Producto no encontrado');
   }
   return response.json();
 }
