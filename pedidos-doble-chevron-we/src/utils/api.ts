@@ -6,7 +6,7 @@ export function getApiUrl(): string {
   if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
     return `http://${window.location.hostname}:3000`;
   }
-  return process.env.NEXT_PUBLIC_API_URL || 'https://tienda-doblechevron.cl';
+  return process.env.NEXT_PUBLIC_API_URL || 'https://doblechevron.cl';
 }
 
 export async function fetchWithAuth(
