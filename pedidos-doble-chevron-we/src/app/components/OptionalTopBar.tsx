@@ -4,6 +4,7 @@ import TopBar from './TopBar'
 
 export default function OptionalTopBar() {
   const pathname = usePathname()
-  if (pathname === '/' || pathname.startsWith('/login')) return null
+  const noTopBar = ['/', '/login', '/almacen', '/products']
+  if (noTopBar.some((p) => pathname === p || (p !== '/' && pathname.startsWith(p)))) return null
   return <TopBar />
 }

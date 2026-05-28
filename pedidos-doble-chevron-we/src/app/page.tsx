@@ -6,7 +6,7 @@ export default function Home() {
   const router = useRouter()
   useEffect(() => {
     const token = localStorage.getItem('token')
-    router.replace(token ? '/products' : '/login')
+    router.replace(token ? '/select-mode' : '/login')
   }, [router])
   return null
 }

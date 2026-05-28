@@ -124,7 +124,6 @@ export default function CartDrawer() {
         })),
       }
 
-      clearCart()
       setSuccess(true)
       downloadTicket(order, payment!)
 
@@ -132,6 +131,7 @@ export default function CartDrawer() {
         setSuccess(false)
         closeDrawer()
         router.push('/products')
+        clearCart()
       }, 2000)
     } catch (err) {
       setError((err as Error).message || 'Error procesando pedido')
