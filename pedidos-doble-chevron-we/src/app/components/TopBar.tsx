@@ -1,16 +1,13 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
-import { HiX, HiShoppingCart, HiMenu } from 'react-icons/hi'
+import { HiX, HiMenu } from 'react-icons/hi'
 import LogoTopBar from './LogoTopBar'
-import { useCart } from '../../context/CartContext'
-import { useCartDrawer } from '../../context/CartDrawerContext'
 import Link from 'next/link'
 import { useLoading } from '../../context/LoadingContext'
 import { getUserRoleFromToken } from '@/utils/auth'
 
 const MENU_LINKS = [
-  { href: '/products', label: 'Productos', roles: ['user', 'admin', 'trabajador'] },
   { href: '/dashboard', label: 'Dashboard', roles: ['admin'] },
   { href: '/admin', label: 'Administración', roles: ['admin'] },
   { href: '/logout', label: 'Cerrar sesión', roles: ['user', 'admin', 'trabajador'] },
@@ -53,13 +50,10 @@ function Star({ size = 22 }: { size?: number }) {
 export default function TopBar() {
   const [open, setOpen] = useState(false)
   const drawerRef = useRef<HTMLDivElement>(null)
-  const { items } = useCart()
-  const { openDrawer } = useCartDrawer()
   const { setLoading } = useLoading()
   const pathname = usePathname()
   const role = getUserRoleFromToken() || 'user'
   const filteredLinks = MENU_LINKS.filter(link => link.roles.includes(role))
-  const totalItems = items.reduce((acc, i) => acc + i.quantity, 0)
 
   function handleNavigate(href: string, closeDrawer = false) {
     if (closeDrawer) setOpen(false)
@@ -84,12 +78,6 @@ export default function TopBar() {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [open])
-
-  const cartBadge = totalItems > 0 && (
-    <span className="absolute -top-2 -right-2 bg-[#F2E2B8] text-[#CC4422] text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-0.5">
-      {totalItems}
-    </span>
-  )
 
   return (
     <>
@@ -128,31 +116,8 @@ export default function TopBar() {
             ))}
           </div>
 
-          {/* Derecha: botón CTA + carrito */}
-          <div className="flex items-center gap-2">
-
-            {/* Carrito */}
-            {pathname.startsWith('/products') ? (
-              <button
-                className="relative text-[#F2E2B8] hover:text-white transition p-1"
-                aria-label="Carrito"
-                onClick={openDrawer}
-              >
-                <HiShoppingCart size={26} />
-                {cartBadge}
-              </button>
-            ) : (
-              <Link
-                href="/cart"
-                className="relative text-[#F2E2B8] hover:text-white transition p-1"
-                aria-label="Carrito"
-                onClick={() => handleNavigate('/cart')}
-              >
-                <HiShoppingCart size={26} />
-                {cartBadge}
-              </Link>
-            )}
-          </div>
+          {/* Derecha: placeholder para mantener el layout centrado */}
+          <div className="w-8" />
         </nav>
       </header>
 
@@ -194,14 +159,6 @@ export default function TopBar() {
             </Link>
           ))}
 
-          {/* CTA en mobile */}
-          <Link
-            href="/products"
-            className="mt-5 flex items-center justify-center bg-[#F2E2B8] text-[#1A0F08] font-extrabold uppercase tracking-widest text-sm px-5 py-3 rounded-full hover:bg-white transition shadow-md"
-            onClick={() => handleNavigate('/products', true)}
-          >
-            Pedí la tuya
-          </Link>
         </nav>
 
         <div className="absolute bottom-4 left-0 w-full text-center text-xs text-[#F2E2B8]/40">

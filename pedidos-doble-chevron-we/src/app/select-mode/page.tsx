@@ -56,18 +56,18 @@ export default function SelectModePage() {
             className="flex-1 group bg-white hover:bg-gray-800 border-2 border-gray-200 hover:border-gray-800 rounded-3xl p-8 shadow-lg hover:shadow-2xl transition-all duration-200 flex flex-col items-center gap-4 active:scale-95"
           >
             <span className="text-6xl group-hover:scale-110 transition-transform duration-200">
-              📦
+              🏪
             </span>
             <div className="text-center">
               <h2 className="text-2xl font-extrabold text-gray-800 group-hover:text-white transition-colors">
-                Almacén
+                Tienda
               </h2>
               <p className="text-gray-500 group-hover:text-gray-300 text-sm mt-1 transition-colors">
                 Escanear productos y gestionar stock
               </p>
             </div>
             <span className="mt-2 px-6 py-2 bg-gray-800 group-hover:bg-white text-white group-hover:text-gray-800 font-bold rounded-full text-sm transition-all duration-200 shadow">
-              Ir al Almacén
+              Ir a la Tienda
             </span>
           </button>
         </div>

@@ -231,8 +231,8 @@ export default function AlmacenPage() {
         >
           <HiArrowLeft size={22} />
         </button>
-        <span className="text-xl">📦</span>
-        <h1 className="text-xl font-extrabold text-gray-800">Almacén</h1>
+        <span className="text-xl">🏪</span>
+        <h1 className="text-xl font-extrabold text-gray-800">Tienda</h1>
         <span className="ml-auto text-sm text-gray-400">{products.length} productos cargados</span>
       </header>
 
