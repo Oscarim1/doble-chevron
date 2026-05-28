@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { HiPlus, HiMinus, HiShoppingCart, HiSearch, HiX } from 'react-icons/hi'
+import { HiPlus, HiMinus, HiShoppingCart, HiSearch, HiX, HiArrowLeft } from 'react-icons/hi'
 import { MdQrCodeScanner } from 'react-icons/md'
 import { useCart } from '../../context/CartContext'
 import { useCartDrawer } from '../../context/CartDrawerContext'
@@ -130,6 +130,17 @@ export default function ProductsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-100">
+      <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
+        <button
+          onClick={() => router.push('/select-mode')}
+          className="text-gray-500 hover:text-gray-800 transition p-1 rounded-lg hover:bg-gray-100"
+          aria-label="Volver a selección"
+        >
+          <HiArrowLeft size={22} />
+        </button>
+        <span className="text-xl">🍔</span>
+        <h1 className="text-xl font-extrabold text-gray-800">Restaurant</h1>
+      </header>
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Buscador */}
         <div className="relative mb-6">
