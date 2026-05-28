@@ -42,7 +42,7 @@ export default function LoginPage() {
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (token) {
-      router.replace('/products')
+      router.replace('/select-mode')
     }
   }, [router])
 
@@ -102,7 +102,7 @@ export default function LoginPage() {
       if (token) localStorage.setItem('token', token)
       if (refresh) localStorage.setItem('refreshToken', refresh)
       if (token) {
-        router.push('/products')
+        router.push('/select-mode')
       }
     } catch (err: any) {
       setError(err.message)
