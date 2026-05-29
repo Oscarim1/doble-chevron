@@ -11,6 +11,11 @@ export interface Categoria {
   parent_name: string | null;
 }
 
+export interface CategoriaPayload {
+  name: string;
+  parent_id?: string | null;
+}
+
 export function useCategorias(parentId?: string) {
   const [data, setData] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,4 +49,43 @@ export function useCategorias(parentId?: string) {
   }, [fetchCategorias]);
 
   return { data, loading, error, refetch: fetchCategorias };
+}
+
+export async function crearCategoria(payload: CategoriaPayload): Promise<Categoria> {
+  const apiUrl = getApiUrl();
+  const response = await fetchWithAuth(`${apiUrl}/api/categories`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Error al crear categoría');
+  }
+  return response.json();
+}
+
+export async function actualizarCategoria(id: string, payload: CategoriaPayload): Promise<Categoria> {
+  const apiUrl = getApiUrl();
+  const response = await fetchWithAuth(`${apiUrl}/api/categories/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Error al actualizar categoría');
+  }
+  return response.json();
+}
+
+export async function eliminarCategoria(id: string): Promise<void> {
+  const apiUrl = getApiUrl();
+  const response = await fetchWithAuth(`${apiUrl}/api/categories/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Error al eliminar categoría');
+  }
 }

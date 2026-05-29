@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { HiShoppingBag, HiCube, HiClipboardList, HiUserGroup, HiShieldCheck, HiCurrencyDollar } from 'react-icons/hi'
+import { HiShoppingBag, HiCube, HiClipboardList, HiUserGroup, HiShieldCheck, HiCurrencyDollar, HiTag } from 'react-icons/hi'
 import { getUserRoleFromToken } from '@/utils/auth'
 
 interface ModuloCard {
@@ -28,6 +28,13 @@ const modulos: ModuloCard[] = [
     href: '/admin/pedidos',
     icon: <HiShoppingBag className="text-3xl" />,
     color: 'bg-green-500',
+  },
+  {
+    titulo: 'Categorías',
+    descripcion: 'Crear y organizar categorías de productos',
+    href: '/admin/categorias',
+    icon: <HiTag className="text-3xl" />,
+    color: 'bg-teal-500',
   },
   {
     titulo: 'Asistencias',
