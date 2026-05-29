@@ -1,11 +1,12 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { HiPlus, HiMinus, HiShoppingCart } from 'react-icons/hi'
 import { useCart } from '../../context/CartContext'
 import { useCartDrawer } from '../../context/CartDrawerContext'
 import { fetchWithAuth, getApiUrl } from '@/utils/api'
 import { useLoading } from '../../context/LoadingContext'
+import { useCategorias } from '@/hooks/useCategorias'
 
 interface Product {
   id: string
@@ -15,24 +16,25 @@ interface Product {
   image_url?: string
   description: string
   category: string
+  category_id?: string | null
+  category_info?: {
+    id: string
+    name: string
+    slug: string
+    parent_id: string | null
+    parent_name: string | null
+  } | null
 }
-
-const CATEGORIES = [
-  { label: 'Doble Chevron', value: 'dobleChevron' },
-  { label: 'Doble Chevron rellenos', value: 'dobleChevron rellenos' },
-  { label: 'Papas fritas', value: 'papas fritas' },
-  { label: 'Bebidas', value: 'bebidas' },
-  { label: 'Otros', value: 'otros' },
-]
 
 export default function ProductsPageV2() {
   const [products, setProducts] = useState<Product[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [activeCategory, setActiveCategory] = useState('dobleChevron')
+  const [activeCategory, setActiveCategory] = useState('')
   const router = useRouter()
   const { items, addItem, getQuantity, removeOne } = useCart()
   const { openDrawer } = useCartDrawer()
   const { setLoading } = useLoading()
+  const { data: categorias } = useCategorias()
 
   const totalItems = items.reduce((acc, i) => acc + i.quantity, 0)
 
@@ -59,9 +61,22 @@ export default function ProductsPageV2() {
       .finally(() => setLoading(false))
   }, [router, setLoading])
 
-  const filteredProducts = products.filter(
-    (p) => (p.category || '').trim().toLowerCase() === activeCategory
-  )
+  // Set first category as active once categories load
+  useEffect(() => {
+    if (categorias.length > 0 && !activeCategory) {
+      setActiveCategory(categorias[0].id)
+    }
+  }, [categorias, activeCategory])
+
+  const filteredProducts = useMemo(() => {
+    const activeCat = categorias.find((c) => c.id === activeCategory)
+    return products.filter((p) => {
+      if (p.category_id) return p.category_id === activeCategory
+      return activeCat
+        ? (p.category || '').trim().toLowerCase() === activeCat.slug
+        : false
+    })
+  }, [products, activeCategory, categorias])
 
   if (error) {
     return (
@@ -74,22 +89,25 @@ export default function ProductsPageV2() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-100">
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex gap-3 mb-8 flex-wrap">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat.value}
-              onClick={() => setActiveCategory(cat.value)}
-              className={`px-5 py-2 rounded-full border font-medium transition-all duration-150
-                ${
-                  activeCategory === cat.value
-                    ? 'bg-black text-white border-black shadow'
-                    : 'bg-white text-black border-gray-300 hover:bg-orange-50'
-                }`}
-            >
-              {cat.label}
-            </button>
-          ))}
-        </div>
+        {/* Tabs de categorias */}
+        {categorias.length > 0 && (
+          <div className="flex gap-3 mb-8 flex-wrap">
+            {categorias.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`px-5 py-2 rounded-full border font-medium transition-all duration-150
+                  ${
+                    activeCategory === cat.id
+                      ? 'bg-black text-white border-black shadow'
+                      : 'bg-white text-black border-gray-300 hover:bg-orange-50'
+                  }`}
+              >
+                {cat.name}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Grid de productos */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -176,7 +194,7 @@ export default function ProductsPageV2() {
         </div>
       </div>
 
-      {/* Floating Cart Button - Solo visible en /products-v2 */}
+      {/* Floating Cart Button */}
       {totalItems > 0 && (
         <button
           onClick={openDrawer}
