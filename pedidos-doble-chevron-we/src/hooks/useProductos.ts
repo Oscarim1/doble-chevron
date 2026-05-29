@@ -5,6 +5,14 @@ import { fetchWithAuth, getApiUrl } from '@/utils/api';
 
 const API_BASE_URL = getApiUrl();
 
+export interface CategoryInfo {
+  id: string;
+  name: string;
+  slug: string;
+  parent_id: string | null;
+  parent_name: string | null;
+}
+
 export interface Producto {
   id: string;
   name: string;
@@ -20,6 +28,8 @@ export interface Producto {
   track_stock: number | boolean;
   created_at: string;
   updated_at: string;
+  category_id: string | null;
+  category_info: CategoryInfo | null;
 }
 
 export interface ProductoPayload {
@@ -29,6 +39,7 @@ export interface ProductoPayload {
   image_url?: string | null;
   description?: string | null;
   precio_puntos?: number;
+  category_id?: string | null;
   category?: string | null;
   sub_category?: string | null;
   barcode?: string | null;

@@ -7,6 +7,7 @@ import { MdQrCodeScanner } from 'react-icons/md'
 import { useCart } from '../../context/CartContext'
 import { fetchWithAuth, getApiUrl } from '@/utils/api'
 import { useLoading } from '../../context/LoadingContext'
+import { useCategorias } from '@/hooks/useCategorias'
 import { getUserIdFromToken } from '@/utils/auth'
 import { generateSinglePDF, Order } from '@/utils/pdfUtils'
 import { format } from 'date-fns'
@@ -19,17 +20,16 @@ interface Product {
   image_url?: string
   description: string
   category: string
+  category_id?: string | null
+  category_info?: {
+    id: string
+    name: string
+    slug: string
+    parent_id: string | null
+    parent_name: string | null
+  } | null
   barcode?: string
 }
-
-const CATEGORIES = [
-  { label: 'Todos', value: '' },
-  { label: 'Doble Chevron', value: 'dobleChevron' },
-  { label: 'DC rellenos', value: 'dobleChevron rellenos' },
-  { label: 'Papas fritas', value: 'papas fritas' },
-  { label: 'Bebidas', value: 'bebidas' },
-  { label: 'Otros', value: 'otros' },
-]
 
 const SCANNER_THRESHOLD_MS = 50
 const SCANNER_MIN_CHARS = 3
@@ -52,6 +52,7 @@ export default function AlmacenPage() {
   const router = useRouter()
   const { items, addItem, removeItem, removeOne, clearCart } = useCart()
   const { setLoading } = useLoading()
+  const { data: categorias } = useCategorias()
 
   const total = items.reduce((acc, i) => acc + i.price * i.quantity, 0)
   const totalItems = items.reduce((acc, i) => acc + i.quantity, 0)
@@ -127,10 +128,14 @@ export default function AlmacenPage() {
       )
     }
     if (!activeCategory) return products
-    return products.filter(
-      (p) => (p.category || '').trim().toLowerCase() === activeCategory
-    )
-  }, [products, busqueda, activeCategory])
+    const activeCat = categorias.find((c) => c.id === activeCategory)
+    return products.filter((p) => {
+      if (p.category_id) return p.category_id === activeCategory
+      return activeCat
+        ? (p.category || '').trim().toLowerCase() === activeCat.slug
+        : false
+    })
+  }, [products, busqueda, activeCategory, categorias])
 
   function downloadTicket(order: Order, metodoPago: 'efectivo' | 'tarjeta') {
     const now = format(new Date(), 'yyyyMMdd_HHmm')
@@ -278,17 +283,27 @@ export default function AlmacenPage() {
 
           {/* Category filters */}
           <div className="flex gap-2 flex-wrap">
-            {CATEGORIES.map((cat) => (
+            <button
+              onClick={() => setActiveCategory('')}
+              className={`px-3 py-1.5 rounded-full border text-sm font-medium transition-all
+                ${activeCategory === ''
+                  ? 'bg-gray-800 text-white border-gray-800'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+            >
+              Todos
+            </button>
+            {categorias.map((cat) => (
               <button
-                key={cat.value}
-                onClick={() => setActiveCategory(cat.value)}
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
                 className={`px-3 py-1.5 rounded-full border text-sm font-medium transition-all
-                  ${activeCategory === cat.value
+                  ${activeCategory === cat.id
                     ? 'bg-gray-800 text-white border-gray-800'
                     : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                   }`}
               >
-                {cat.label}
+                {cat.name}
               </button>
             ))}
           </div>

@@ -23,14 +23,7 @@ import {
   type Producto,
   type ProductoPayload,
 } from '@/hooks/useProductos'
-
-const categorias = [
-  { value: '', label: 'Sin categoria' },
-  { value: 'bebidas', label: 'Bebidas' },
-  { value: 'dobleChevron', label: 'Doble Chevron' },
-  { value: 'snacks', label: 'Snacks' },
-  { value: 'otros', label: 'Otros' },
-]
+import { useCategorias } from '@/hooks/useCategorias'
 
 function formatCLP(value: number): string {
   return '$' + Math.round(value).toLocaleString('es-CL')
@@ -43,7 +36,7 @@ interface FormState {
   image_url: string
   description: string
   precio_puntos: string
-  category: string
+  category_id: string
   sub_category: string
   barcode: string
   is_active: boolean
@@ -56,7 +49,7 @@ const initialFormState: FormState = {
   image_url: '',
   description: '',
   precio_puntos: '0',
-  category: '',
+  category_id: '',
   sub_category: '',
   barcode: '',
   is_active: true,
@@ -65,6 +58,7 @@ const initialFormState: FormState = {
 export default function AdminProductosPage() {
   const router = useRouter()
   const { data: productos, loading, error, refetch } = useProductos(true)
+  const { data: categorias } = useCategorias()
   const [busqueda, setBusqueda] = useState('')
 
   // Modal state
@@ -85,7 +79,6 @@ export default function AdminProductosPage() {
     }
   }, [router])
 
-  // Filtrar productos por busqueda
   const productosFiltrados = useMemo(() => {
     if (!productos) return []
     if (!busqueda.trim()) return productos
@@ -93,13 +86,13 @@ export default function AdminProductosPage() {
     return productos.filter(
       (p) =>
         p.name.toLowerCase().includes(termino) ||
+        p.category_info?.name.toLowerCase().includes(termino) ||
         p.category?.toLowerCase().includes(termino) ||
         p.sub_category?.toLowerCase().includes(termino) ||
         p.barcode?.toLowerCase().includes(termino)
     )
   }, [productos, busqueda])
 
-  // Abrir modal para crear
   const handleNuevo = () => {
     setProductoEditando(null)
     setForm(initialFormState)
@@ -107,7 +100,6 @@ export default function AdminProductosPage() {
     setModalAbierto(true)
   }
 
-  // Abrir modal para editar
   const handleEditar = (producto: Producto) => {
     setProductoEditando(producto)
     setForm({
@@ -117,7 +109,7 @@ export default function AdminProductosPage() {
       image_url: producto.image_url || '',
       description: producto.description || '',
       precio_puntos: String(producto.precio_puntos || 0),
-      category: producto.category || '',
+      category_id: producto.category_id || '',
       sub_category: producto.sub_category || '',
       barcode: producto.barcode || '',
       is_active: Boolean(producto.is_active),
@@ -126,7 +118,6 @@ export default function AdminProductosPage() {
     setModalAbierto(true)
   }
 
-  // Guardar (crear o actualizar)
   const handleGuardar = async () => {
     if (!form.name.trim()) {
       setErrorForm('El nombre es requerido')
@@ -144,7 +135,7 @@ export default function AdminProductosPage() {
       image_url: form.image_url.trim() || null,
       description: form.description.trim() || null,
       precio_puntos: Number(form.precio_puntos) || 0,
-      category: form.category || null,
+      category_id: form.category_id || null,
       sub_category: form.sub_category.trim() || null,
       barcode: form.barcode.trim() || null,
       is_active: form.is_active,
@@ -168,7 +159,6 @@ export default function AdminProductosPage() {
     }
   }
 
-  // Eliminar
   const handleEliminar = async () => {
     if (!confirmandoEliminar) return
     setEliminando(true)
@@ -181,6 +171,11 @@ export default function AdminProductosPage() {
     } finally {
       setEliminando(false)
     }
+  }
+
+  const getCategoryLabel = (producto: Producto) => {
+    if (producto.category_info?.name) return producto.category_info.name
+    return producto.category || null
   }
 
   return (
@@ -291,9 +286,9 @@ export default function AdminProductosPage() {
                     </span>
                   </div>
                   <p className="text-lg font-bold text-orange-600">{formatCLP(producto.price)}</p>
-                  {producto.category && (
+                  {getCategoryLabel(producto) && (
                     <p className="text-xs text-gray-400 mt-1">
-                      {producto.category}
+                      {getCategoryLabel(producto)}
                       {producto.sub_category && ` > ${producto.sub_category}`}
                     </p>
                   )}
@@ -418,36 +413,37 @@ export default function AdminProductosPage() {
                       </div>
                     </div>
 
-                    {/* Categoria y Subcategoria */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-1">
-                          Categoria
-                        </label>
-                        <select
-                          value={form.category}
-                          onChange={(e) => setForm({ ...form, category: e.target.value })}
-                          className="w-full px-4 py-2 rounded-xl border border-gray-200 font-semibold text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
-                        >
-                          {categorias.map((cat) => (
-                            <option key={cat.value} value={cat.value}>
-                              {cat.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-1">
-                          Subcategoria
-                        </label>
-                        <input
-                          type="text"
-                          value={form.sub_category}
-                          onChange={(e) => setForm({ ...form, sub_category: e.target.value })}
-                          className="w-full px-4 py-2 rounded-xl border border-gray-200 font-semibold text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
-                          placeholder="Ej: gaseosas"
-                        />
-                      </div>
+                    {/* Categoria */}
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">
+                        Categoria
+                      </label>
+                      <select
+                        value={form.category_id}
+                        onChange={(e) => setForm({ ...form, category_id: e.target.value })}
+                        className="w-full px-4 py-2 rounded-xl border border-gray-200 font-semibold text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
+                      >
+                        <option value="">Sin categoria</option>
+                        {categorias.map((cat) => (
+                          <option key={cat.id} value={cat.id}>
+                            {cat.parent_name ? `${cat.parent_name} > ${cat.name}` : cat.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Subcategoria */}
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">
+                        Subcategoria
+                      </label>
+                      <input
+                        type="text"
+                        value={form.sub_category}
+                        onChange={(e) => setForm({ ...form, sub_category: e.target.value })}
+                        className="w-full px-4 py-2 rounded-xl border border-gray-200 font-semibold text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
+                        placeholder="Ej: gaseosas"
+                      />
                     </div>
 
                     {/* URL Imagen */}
