@@ -4,16 +4,6 @@ import { useEffect, useState, useMemo, Fragment } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Dialog, Transition } from '@headlessui/react'
-import {
-  HiArrowLeft,
-  HiPlus,
-  HiPencil,
-  HiTrash,
-  HiSearch,
-  HiX,
-  HiCheck,
-  HiExclamation,
-} from 'react-icons/hi'
 import { getUserRoleFromToken } from '@/utils/auth'
 import {
   useProductos,
@@ -24,35 +14,19 @@ import {
   type ProductoPayload,
 } from '@/hooks/useProductos'
 import { useCategorias } from '@/hooks/useCategorias'
+import DCTopbar from '@/app/components/DCTopbar'
 
 function formatCLP(value: number): string {
   return '$' + Math.round(value).toLocaleString('es-CL')
 }
 
 interface FormState {
-  name: string
-  price: string
-  points: string
-  image_url: string
-  description: string
-  precio_puntos: string
-  category_id: string
-  sub_category: string
-  barcode: string
-  is_active: boolean
+  name: string; price: string; points: string; image_url: string; description: string
+  precio_puntos: string; category_id: string; sub_category: string; barcode: string; is_active: boolean
 }
-
-const initialFormState: FormState = {
-  name: '',
-  price: '',
-  points: '0',
-  image_url: '',
-  description: '',
-  precio_puntos: '0',
-  category_id: '',
-  sub_category: '',
-  barcode: '',
-  is_active: true,
+const initialForm: FormState = {
+  name: '', price: '', points: '0', image_url: '', description: '',
+  precio_puntos: '0', category_id: '', sub_category: '', barcode: '', is_active: true,
 }
 
 export default function AdminProductosPage() {
@@ -60,561 +34,257 @@ export default function AdminProductosPage() {
   const { data: productos, loading, error, refetch } = useProductos(true)
   const { data: categorias } = useCategorias()
   const [busqueda, setBusqueda] = useState('')
-
-  // Modal state
-  const [modalAbierto, setModalAbierto] = useState(false)
-  const [productoEditando, setProductoEditando] = useState<Producto | null>(null)
-  const [form, setForm] = useState<FormState>(initialFormState)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editando, setEditando] = useState<Producto | null>(null)
+  const [form, setForm] = useState<FormState>(initialForm)
   const [guardando, setGuardando] = useState(false)
   const [errorForm, setErrorForm] = useState<string | null>(null)
-
-  // Confirmacion eliminar
-  const [confirmandoEliminar, setConfirmandoEliminar] = useState<Producto | null>(null)
+  const [confirmDel, setConfirmDel] = useState<Producto | null>(null)
   const [eliminando, setEliminando] = useState(false)
 
   useEffect(() => {
-    const role = getUserRoleFromToken()
-    if (role !== 'admin') {
-      router.replace('/login')
-    }
+    if (getUserRoleFromToken() !== 'admin') router.replace('/login')
   }, [router])
 
-  const productosFiltrados = useMemo(() => {
+  const filtrados = useMemo(() => {
     if (!productos) return []
     if (!busqueda.trim()) return productos
-    const termino = busqueda.toLowerCase()
-    return productos.filter(
-      (p) =>
-        p.name.toLowerCase().includes(termino) ||
-        p.category_info?.name.toLowerCase().includes(termino) ||
-        p.category?.toLowerCase().includes(termino) ||
-        p.sub_category?.toLowerCase().includes(termino) ||
-        p.barcode?.toLowerCase().includes(termino)
+    const t = busqueda.toLowerCase()
+    return productos.filter(p =>
+      p.name.toLowerCase().includes(t) ||
+      p.category_info?.name.toLowerCase().includes(t) ||
+      p.category?.toLowerCase().includes(t) ||
+      p.sub_category?.toLowerCase().includes(t) ||
+      p.barcode?.toLowerCase().includes(t)
     )
   }, [productos, busqueda])
 
-  const handleNuevo = () => {
-    setProductoEditando(null)
-    setForm(initialFormState)
-    setErrorForm(null)
-    setModalAbierto(true)
-  }
-
-  const handleEditar = (producto: Producto) => {
-    setProductoEditando(producto)
-    setForm({
-      name: producto.name,
-      price: String(producto.price),
-      points: String(producto.points || 0),
-      image_url: producto.image_url || '',
-      description: producto.description || '',
-      precio_puntos: String(producto.precio_puntos || 0),
-      category_id: producto.category_id || '',
-      sub_category: producto.sub_category || '',
-      barcode: producto.barcode || '',
-      is_active: Boolean(producto.is_active),
-    })
-    setErrorForm(null)
-    setModalAbierto(true)
+  const openNew = () => { setEditando(null); setForm(initialForm); setErrorForm(null); setModalOpen(true) }
+  const openEdit = (p: Producto) => {
+    setEditando(p)
+    setForm({ name: p.name, price: String(p.price), points: String(p.points || 0), image_url: p.image_url || '', description: p.description || '', precio_puntos: String(p.precio_puntos || 0), category_id: p.category_id || '', sub_category: p.sub_category || '', barcode: p.barcode || '', is_active: Boolean(p.is_active) })
+    setErrorForm(null); setModalOpen(true)
   }
 
   const handleGuardar = async () => {
-    if (!form.name.trim()) {
-      setErrorForm('El nombre es requerido')
-      return
-    }
-    if (!form.price || Number(form.price) <= 0) {
-      setErrorForm('El precio debe ser mayor a 0')
-      return
-    }
-
+    if (!form.name.trim()) { setErrorForm('El nombre es requerido'); return }
+    if (!form.price || Number(form.price) <= 0) { setErrorForm('El precio debe ser mayor a 0'); return }
     const payload: ProductoPayload = {
-      name: form.name.trim(),
-      price: Number(form.price),
-      points: Number(form.points) || 0,
-      image_url: form.image_url.trim() || null,
-      description: form.description.trim() || null,
-      precio_puntos: Number(form.precio_puntos) || 0,
-      category_id: form.category_id || null,
-      sub_category: form.sub_category.trim() || null,
-      barcode: form.barcode.trim() || null,
+      name: form.name.trim(), price: Number(form.price), points: Number(form.points) || 0,
+      image_url: form.image_url.trim() || null, description: form.description.trim() || null,
+      precio_puntos: Number(form.precio_puntos) || 0, category_id: form.category_id || null,
+      sub_category: form.sub_category.trim() || null, barcode: form.barcode.trim() || null,
       is_active: form.is_active,
     }
-
-    setGuardando(true)
-    setErrorForm(null)
-
+    setGuardando(true); setErrorForm(null)
     try {
-      if (productoEditando) {
-        await actualizarProducto(productoEditando.id, payload)
-      } else {
-        await crearProducto(payload)
-      }
-      setModalAbierto(false)
-      refetch()
-    } catch (err) {
-      setErrorForm((err as Error).message)
-    } finally {
-      setGuardando(false)
-    }
+      if (editando) await actualizarProducto(editando.id, payload)
+      else await crearProducto(payload)
+      setModalOpen(false); refetch()
+    } catch (err) { setErrorForm((err as Error).message) }
+    finally { setGuardando(false) }
   }
 
   const handleEliminar = async () => {
-    if (!confirmandoEliminar) return
+    if (!confirmDel) return
     setEliminando(true)
-    try {
-      await eliminarProducto(confirmandoEliminar.id)
-      setConfirmandoEliminar(null)
-      refetch()
-    } catch (err) {
-      alert((err as Error).message)
-    } finally {
-      setEliminando(false)
-    }
+    try { await eliminarProducto(confirmDel.id); setConfirmDel(null); refetch() }
+    catch (err) { alert((err as Error).message) }
+    finally { setEliminando(false) }
   }
 
-  const getCategoryLabel = (producto: Producto) => {
-    if (producto.category_info?.name) return producto.category_info.name
-    return producto.category || null
-  }
+  const getCatLabel = (p: Producto) => p.category_info?.name ?? p.category ?? null
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-100 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <header className="flex items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-4">
-            <Link href="/admin" className="p-2 rounded-lg hover:bg-white transition">
-              <HiArrowLeft className="text-xl text-gray-600" />
-            </Link>
-            <h1 className="text-2xl font-extrabold text-gray-900">Gestion de Productos</h1>
-          </div>
-          <button
-            onClick={handleNuevo}
-            className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition"
-          >
-            <HiPlus className="text-lg" />
-            Nuevo
-          </button>
-        </header>
+    <div style={{ minHeight: '100dvh', background: '#FBF1E2', color: '#221813' }}>
+      <DCTopbar active="admin" />
 
-        {/* Buscador */}
-        <div className="bg-white rounded-2xl shadow p-4 mb-6">
-          <div className="relative">
-            <HiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Buscar por nombre, categoria o barcode..."
-              className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200 font-semibold text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
-            />
-            {busqueda && (
-              <button
-                onClick={() => setBusqueda('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                <HiX />
-              </button>
-            )}
+      <main className="dc-page">
+        {/* ── Header ── */}
+        <div className="dc-head">
+          <div className="dc-head__left">
+            <Link href="/admin" className="dc-back" aria-label="Volver">
+              <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            </Link>
+            <div>
+              <div className="dc-kicker">· Catálogo ·</div>
+              <h1 className="dc-title">Gestión de Productos</h1>
+              <p className="dc-sub">{productos?.length ?? 0} productos · toca una tarjeta para editar.</p>
+            </div>
+          </div>
+          <div className="dc-head__actions">
+            <button className="btn btn--primary" onClick={openNew}>
+              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Nuevo
+            </button>
           </div>
         </div>
 
-        {/* Error */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
-            <p className="text-red-600 font-semibold">{error}</p>
+        {/* ── Search ── */}
+        <div className="dc-search">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar por nombre, categoría o barcode…" />
+        </div>
+
+        {/* ── Error ── */}
+        {error && <div className="card" style={{ padding: '14px 18px', marginBottom: 16, background: '#F7D9D5', borderColor: '#D63B30' }}><p style={{ color: '#C23A2E', fontWeight: 600, margin: 0 }}>{error}</p></div>}
+
+        {/* ── Loading skeletons ── */}
+        {loading && (
+          <div className="prod-grid">
+            {[1,2,3,4].map(i => <div key={i} className="prod-card skeleton" style={{ height: 124 }} />)}
           </div>
         )}
 
-        {/* Lista de productos */}
-        {loading ? (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="bg-white rounded-2xl shadow p-4 h-32 animate-pulse">
-                <div className="flex gap-4">
-                  <div className="w-20 h-20 rounded-xl bg-gray-200" />
-                  <div className="flex-1">
-                    <div className="h-5 w-32 bg-gray-200 rounded mb-2" />
-                    <div className="h-4 w-20 bg-gray-200 rounded mb-2" />
-                    <div className="h-3 w-24 bg-gray-200 rounded" />
-                  </div>
+        {/* ── Empty ── */}
+        {!loading && filtrados.length === 0 && (
+          <div className="dc-empty">
+            <div className="ic"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+            <h3>{busqueda ? 'No se encontraron productos' : 'No hay productos registrados'}</h3>
+            <p>{busqueda ? 'Prueba con otro término de búsqueda.' : 'Crea el primer producto usando el botón Nuevo.'}</p>
+          </div>
+        )}
+
+        {/* ── Product grid ── */}
+        {!loading && filtrados.length > 0 && (
+          <div className="prod-grid">
+            {filtrados.map(p => (
+              <article key={p.id} className="prod-card">
+                <div className="prod-thumb">
+                  {p.image_url
+                    ? <img src={p.image_url} alt={p.name} />
+                    : <span style={{ color: '#4A3A30', fontSize: 11 }}>foto</span>
+                  }
                 </div>
-              </div>
-            ))}
-          </div>
-        ) : productosFiltrados.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow p-8 text-center">
-            <p className="font-semibold text-gray-400">
-              {busqueda ? 'No se encontraron productos' : 'No hay productos registrados'}
-            </p>
-          </div>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {productosFiltrados.map((producto) => (
-              <div
-                key={producto.id}
-                className="bg-white rounded-2xl shadow p-4 flex gap-4"
-              >
-                {/* Imagen */}
-                <div className="w-20 h-20 rounded-xl bg-gray-100 flex-shrink-0 overflow-hidden">
-                  {producto.image_url ? (
-                    <img
-                      src={producto.image_url}
-                      alt={producto.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full grid place-items-center text-2xl text-gray-300">
-                      📦
+                <div className="prod-info">
+                  <div className="prod-top">
+                    <div>
+                      <div className="prod-name">{p.name}</div>
+                      <div className="prod-price">{formatCLP(p.price)}</div>
+                      {getCatLabel(p) && <div className="prod-cat">{getCatLabel(p)}{p.sub_category && ` › ${p.sub_category}`}</div>}
                     </div>
-                  )}
-                </div>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-bold text-gray-900 truncate">{producto.name}</h3>
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-xs font-bold flex-shrink-0 ${
-                        producto.is_active
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-gray-100 text-gray-500'
-                      }`}
-                    >
-                      {producto.is_active ? 'Activo' : 'Inactivo'}
-                    </span>
+                    <span className={`badge ${p.is_active ? 'badge--ok' : 'badge--off'}`}>{p.is_active ? 'Activo' : 'Inactivo'}</span>
                   </div>
-                  <p className="text-lg font-bold text-orange-600">{formatCLP(producto.price)}</p>
-                  {getCategoryLabel(producto) && (
-                    <p className="text-xs text-gray-400 mt-1">
-                      {getCategoryLabel(producto)}
-                      {producto.sub_category && ` > ${producto.sub_category}`}
-                    </p>
-                  )}
-                  {producto.barcode && (
-                    <p className="text-xs text-gray-400 font-mono mt-0.5">
-                      {producto.barcode}
-                    </p>
-                  )}
-
-                  {/* Acciones */}
-                  <div className="flex gap-2 mt-3">
-                    <button
-                      onClick={() => handleEditar(producto)}
-                      className="flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-600 font-semibold rounded-lg hover:bg-blue-100 transition text-sm"
-                    >
-                      <HiPencil /> Editar
+                  <div className="prod-actions">
+                    <button className="btn btn--ghost btn--sm" onClick={() => openEdit(p)}>
+                      <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Editar
                     </button>
-                    <button
-                      onClick={() => setConfirmandoEliminar(producto)}
-                      className="flex items-center gap-1 px-3 py-1 bg-red-50 text-red-600 font-semibold rounded-lg hover:bg-red-100 transition text-sm"
-                    >
-                      <HiTrash /> Eliminar
+                    <button className="btn btn--ghost btn--sm" onClick={() => setConfirmDel(p)} style={{ color: '#C23A2E', borderColor: '#C23A2E' }}>
+                      <svg viewBox="0 0 24 24" style={{ stroke: '#C23A2E' }}><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>Eliminar
                     </button>
                   </div>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
         )}
 
-        {/* Contador */}
         {productos && productos.length > 0 && (
-          <p className="text-center text-sm text-gray-400 mt-6">
-            Mostrando {productosFiltrados.length} de {productos.length} productos
+          <p style={{ textAlign: 'center', fontSize: 13, color: '#4A3A30', marginTop: 20 }}>
+            Mostrando {filtrados.length} de {productos.length} productos
           </p>
         )}
-      </div>
+      </main>
 
-      {/* Modal Crear/Editar */}
-      <Transition appear show={modalAbierto} as={Fragment}>
-        <Dialog as="div" className="relative z-50" onClose={() => setModalAbierto(false)}>
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-200"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-150"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
+      {/* ── Modal Crear/Editar ── */}
+      <Transition appear show={modalOpen} as={Fragment}>
+        <Dialog as="div" style={{ position: 'relative', zIndex: 80 }} onClose={() => setModalOpen(false)}>
+          <Transition.Child as={Fragment} enter="ease-out duration-200" enterFrom="opacity-0" enterTo="opacity-100" leave="ease-in duration-150" leaveFrom="opacity-100" leaveTo="opacity-0">
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(34,24,19,0.55)' }} />
           </Transition.Child>
-
-          <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4">
-              <Transition.Child
-                as={Fragment}
-                enter="ease-out duration-300"
-                enterFrom="opacity-0 scale-95"
-                enterTo="opacity-100 scale-100"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0 scale-95"
-              >
-                <Dialog.Panel className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden">
-                  {/* Header */}
-                  <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                    <Dialog.Title className="text-lg font-bold text-gray-900">
-                      {productoEditando ? 'Editar Producto' : 'Nuevo Producto'}
-                    </Dialog.Title>
-                    <button
-                      onClick={() => setModalAbierto(false)}
-                      className="p-1 rounded-lg hover:bg-gray-100 transition"
-                    >
-                      <HiX className="text-xl text-gray-400" />
-                    </button>
+          <div style={{ position: 'fixed', inset: 0, overflowY: 'auto', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '48px 20px' }}>
+            <Transition.Child as={Fragment} enter="ease-out duration-200" enterFrom="opacity-0 translate-y-2" enterTo="opacity-100 translate-y-0" leave="ease-in duration-150" leaveFrom="opacity-100" leaveTo="opacity-0">
+              <Dialog.Panel className="dc-modal">
+                <div className="dc-modal__head">
+                  <Dialog.Title as="h2">{editando ? 'Editar Producto' : 'Nuevo Producto'}</Dialog.Title>
+                  <button className="dc-modal__close" onClick={() => setModalOpen(false)}>
+                    <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                  </button>
+                </div>
+                <div className="dc-modal__body" style={{ maxHeight: '65vh', overflowY: 'auto' }}>
+                  <div className="field">
+                    <label>Nombre <span className="req">*</span></label>
+                    <input className="dc-input" type="text" value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Ej: Coca Cola 500ml" />
                   </div>
-
-                  {/* Formulario */}
-                  <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-                    {/* Nombre */}
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-1">
-                        Nombre *
-                      </label>
-                      <input
-                        type="text"
-                        value={form.name}
-                        onChange={(e) => setForm({ ...form, name: e.target.value })}
-                        className="w-full px-4 py-2 rounded-xl border border-gray-200 font-semibold text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
-                        placeholder="Ej: Coca Cola 500ml"
-                      />
+                  <div className="field-row">
+                    <div className="field">
+                      <label>Precio <span className="req">*</span></label>
+                      <input className="dc-input" type="number" value={form.price} onChange={e => setForm({...form, price: e.target.value})} placeholder="1200" min="0" />
                     </div>
-
-                    {/* Precio y Puntos */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-1">
-                          Precio *
-                        </label>
-                        <input
-                          type="number"
-                          value={form.price}
-                          onChange={(e) => setForm({ ...form, price: e.target.value })}
-                          className="w-full px-4 py-2 rounded-xl border border-gray-200 font-semibold text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
-                          placeholder="1200"
-                          min="0"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-1">
-                          Puntos
-                        </label>
-                        <input
-                          type="number"
-                          value={form.points}
-                          onChange={(e) => setForm({ ...form, points: e.target.value })}
-                          className="w-full px-4 py-2 rounded-xl border border-gray-200 font-semibold text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
-                          placeholder="10"
-                          min="0"
-                        />
-                      </div>
+                    <div className="field">
+                      <label>Puntos</label>
+                      <input className="dc-input" type="number" value={form.points} onChange={e => setForm({...form, points: e.target.value})} placeholder="10" min="0" />
                     </div>
-
-                    {/* Categoria */}
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-1">
-                        Categoria
-                      </label>
-                      <select
-                        value={form.category_id}
-                        onChange={(e) => setForm({ ...form, category_id: e.target.value })}
-                        className="w-full px-4 py-2 rounded-xl border border-gray-200 font-semibold text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
-                      >
-                        <option value="">Sin categoria</option>
-                        {categorias.map((cat) => (
-                          <option key={cat.id} value={cat.id}>
-                            {cat.parent_name ? `${cat.parent_name} > ${cat.name}` : cat.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Subcategoria */}
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-1">
-                        Subcategoria
-                      </label>
-                      <input
-                        type="text"
-                        value={form.sub_category}
-                        onChange={(e) => setForm({ ...form, sub_category: e.target.value })}
-                        className="w-full px-4 py-2 rounded-xl border border-gray-200 font-semibold text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
-                        placeholder="Ej: gaseosas"
-                      />
-                    </div>
-
-                    {/* URL Imagen */}
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-1">
-                        URL de imagen
-                      </label>
-                      <input
-                        type="text"
-                        value={form.image_url}
-                        onChange={(e) => setForm({ ...form, image_url: e.target.value })}
-                        className="w-full px-4 py-2 rounded-xl border border-gray-200 font-semibold text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
-                        placeholder="https://ejemplo.com/imagen.jpg"
-                      />
-                    </div>
-
-                    {/* Descripcion */}
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-1">
-                        Descripcion
-                      </label>
-                      <textarea
-                        value={form.description}
-                        onChange={(e) => setForm({ ...form, description: e.target.value })}
-                        rows={2}
-                        className="w-full px-4 py-2 rounded-xl border border-gray-200 font-semibold text-gray-900 resize-none focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
-                        placeholder="Descripcion del producto..."
-                      />
-                    </div>
-
-                    {/* Barcode */}
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-1">
-                        Codigo de barras
-                      </label>
-                      <input
-                        type="text"
-                        value={form.barcode}
-                        onChange={(e) => setForm({ ...form, barcode: e.target.value })}
-                        className="w-full px-4 py-2 rounded-xl border border-gray-200 font-mono text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
-                        placeholder="Ej: 7501055300522"
-                      />
-                    </div>
-
-                    {/* Precio en puntos */}
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-1">
-                        Precio en puntos (canje)
-                      </label>
-                      <input
-                        type="number"
-                        value={form.precio_puntos}
-                        onChange={(e) => setForm({ ...form, precio_puntos: e.target.value })}
-                        className="w-full px-4 py-2 rounded-xl border border-gray-200 font-semibold text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
-                        placeholder="100"
-                        min="0"
-                      />
-                    </div>
-
-                    {/* Activo */}
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setForm({ ...form, is_active: !form.is_active })}
-                        className={`w-12 h-6 rounded-full transition-colors relative ${
-                          form.is_active ? 'bg-green-500' : 'bg-gray-300'
-                        }`}
-                      >
-                        <span
-                          className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                            form.is_active ? 'left-7' : 'left-1'
-                          }`}
-                        />
-                      </button>
-                      <span className="text-sm font-semibold text-gray-700">
-                        {form.is_active ? 'Producto activo' : 'Producto inactivo'}
-                      </span>
-                    </div>
-
-                    {/* Error */}
-                    {errorForm && (
-                      <div className="bg-red-50 border border-red-200 rounded-xl p-3">
-                        <p className="text-red-600 font-semibold text-sm">{errorForm}</p>
-                      </div>
-                    )}
                   </div>
-
-                  {/* Footer */}
-                  <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
-                    <button
-                      onClick={() => setModalAbierto(false)}
-                      className="flex-1 py-2 rounded-xl border border-gray-200 font-bold text-gray-600 hover:bg-gray-50 transition"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={handleGuardar}
-                      disabled={guardando}
-                      className="flex-1 py-2 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 disabled:opacity-50 transition flex items-center justify-center gap-2"
-                    >
-                      {guardando ? (
-                        'Guardando...'
-                      ) : (
-                        <>
-                          <HiCheck /> Guardar
-                        </>
-                      )}
-                    </button>
+                  <div className="field">
+                    <label>Categoría</label>
+                    <select className="dc-select" value={form.category_id} onChange={e => setForm({...form, category_id: e.target.value})}>
+                      <option value="">Sin categoría</option>
+                      {categorias.map(cat => <option key={cat.id} value={cat.id}>{cat.parent_name ? `${cat.parent_name} › ${cat.name}` : cat.name}</option>)}
+                    </select>
                   </div>
-                </Dialog.Panel>
-              </Transition.Child>
-            </div>
+                  <div className="field">
+                    <label>Subcategoría</label>
+                    <input className="dc-input" type="text" value={form.sub_category} onChange={e => setForm({...form, sub_category: e.target.value})} placeholder="Ej: gaseosas" />
+                  </div>
+                  <div className="field">
+                    <label>URL de imagen</label>
+                    <input className="dc-input" type="text" value={form.image_url} onChange={e => setForm({...form, image_url: e.target.value})} placeholder="https://ejemplo.com/imagen.jpg" />
+                  </div>
+                  <div className="field">
+                    <label>Descripción</label>
+                    <textarea className="dc-textarea" value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="Descripción del producto…" />
+                  </div>
+                  <div className="field">
+                    <label>Código de barras</label>
+                    <input className="dc-input" type="text" value={form.barcode} onChange={e => setForm({...form, barcode: e.target.value})} placeholder="Ej: 7501055300522" style={{ fontFamily: 'ui-monospace, monospace' }} />
+                  </div>
+                  <div className="field">
+                    <label>Precio en puntos (canje)</label>
+                    <input className="dc-input" type="number" value={form.precio_puntos} onChange={e => setForm({...form, precio_puntos: e.target.value})} placeholder="100" min="0" />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <button type="button" onClick={() => setForm({...form, is_active: !form.is_active})}
+                      style={{ width: 48, height: 26, borderRadius: 999, border: 'none', cursor: 'pointer', position: 'relative', background: form.is_active ? '#2FA35A' : '#C5AE9E', transition: 'background 150ms' }}>
+                      <span style={{ position: 'absolute', top: 3, width: 20, height: 20, borderRadius: 999, background: '#fff', transition: 'left 150ms', left: form.is_active ? 24 : 4 }} />
+                    </button>
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>{form.is_active ? 'Activo' : 'Inactivo'}</span>
+                  </div>
+                  {errorForm && <div style={{ background: '#F7D9D5', borderRadius: 8, padding: '10px 14px' }}><p style={{ color: '#C23A2E', fontWeight: 600, fontSize: 13, margin: 0 }}>{errorForm}</p></div>}
+                </div>
+                <div className="dc-modal__foot">
+                  <button className="btn btn--ghost" onClick={() => setModalOpen(false)}>Cancelar</button>
+                  <button className="btn btn--primary" onClick={handleGuardar} disabled={guardando}>
+                    <svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-9"/></svg>{guardando ? 'Guardando…' : 'Guardar'}
+                  </button>
+                </div>
+              </Dialog.Panel>
+            </Transition.Child>
           </div>
         </Dialog>
       </Transition>
 
-      {/* Modal Confirmar Eliminar */}
-      <Transition appear show={!!confirmandoEliminar} as={Fragment}>
-        <Dialog as="div" className="relative z-50" onClose={() => setConfirmandoEliminar(null)}>
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-200"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-150"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
+      {/* ── Modal Eliminar ── */}
+      <Transition appear show={!!confirmDel} as={Fragment}>
+        <Dialog as="div" style={{ position: 'relative', zIndex: 80 }} onClose={() => setConfirmDel(null)}>
+          <Transition.Child as={Fragment} enter="ease-out duration-200" enterFrom="opacity-0" enterTo="opacity-100" leave="ease-in duration-150" leaveFrom="opacity-100" leaveTo="opacity-0">
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(34,24,19,0.55)' }} />
           </Transition.Child>
-
-          <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4">
-              <Transition.Child
-                as={Fragment}
-                enter="ease-out duration-300"
-                enterFrom="opacity-0 scale-95"
-                enterTo="opacity-100 scale-100"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0 scale-95"
-              >
-                <Dialog.Panel className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-6 text-center">
-                  <div className="w-16 h-16 rounded-full bg-red-100 grid place-items-center mx-auto mb-4">
-                    <HiExclamation className="text-3xl text-red-500" />
+          <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+            <Transition.Child as={Fragment} enter="ease-out duration-200" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100" leave="ease-in duration-150" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95">
+              <Dialog.Panel className="dc-modal dc-modal--narrow">
+                <div className="dc-modal__body" style={{ alignItems: 'center', textAlign: 'center', paddingBottom: 0 }}>
+                  <div style={{ width: 64, height: 64, borderRadius: 999, background: '#F7D9D5', border: '1.5px solid #D63B30', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
+                    <svg viewBox="0 0 24 24" style={{ width: 30, height: 30, stroke: '#C23A2E', strokeWidth: 2, fill: 'none', strokeLinecap: 'round', strokeLinejoin: 'round' }}><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
                   </div>
-                  <Dialog.Title className="text-lg font-bold text-gray-900 mb-2">
-                    Eliminar producto
-                  </Dialog.Title>
-                  <p className="text-gray-500 mb-6">
-                    ¿Estas seguro de eliminar <b>{confirmandoEliminar?.name}</b>? Esta accion no se
-                    puede deshacer.
-                  </p>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => setConfirmandoEliminar(null)}
-                      className="flex-1 py-2 rounded-xl border border-gray-200 font-bold text-gray-600 hover:bg-gray-50 transition"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={handleEliminar}
-                      disabled={eliminando}
-                      className="flex-1 py-2 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 disabled:opacity-50 transition"
-                    >
-                      {eliminando ? 'Eliminando...' : 'Eliminar'}
-                    </button>
-                  </div>
-                </Dialog.Panel>
-              </Transition.Child>
-            </div>
+                  <Dialog.Title style={{ fontFamily: 'var(--font-alfa-slab-one), serif', fontWeight: 400, fontSize: 24, margin: '4px 0 0', color: '#221813' }}>Eliminar producto</Dialog.Title>
+                  <p style={{ margin: 0, color: '#4A3A30', fontSize: 14.5, lineHeight: 1.5 }}>¿Estás seguro de eliminar <strong>{confirmDel?.name}</strong>?<br/>Esta acción no se puede deshacer.</p>
+                </div>
+                <div className="dc-modal__foot">
+                  <button className="btn btn--ghost" onClick={() => setConfirmDel(null)}>Cancelar</button>
+                  <button className="btn btn--danger" onClick={handleEliminar} disabled={eliminando}>{eliminando ? 'Eliminando…' : 'Eliminar'}</button>
+                </div>
+              </Dialog.Panel>
+            </Transition.Child>
           </div>
         </Dialog>
       </Transition>
