@@ -10,7 +10,7 @@ import { getUserIdFromToken } from '@/utils/auth'
 import { format } from 'date-fns'
 
 export default function CartDrawer() {
-  const { items, addItem, removeItem, removeOne, clearCart } = useCart()
+  const { items, addItem, removeItem, removeOne, updateDetail, clearCart } = useCart()
   const { isOpen, closeDrawer } = useCartDrawer()
   const router = useRouter()
   const modalRef = useRef<HTMLDivElement>(null)
@@ -120,6 +120,7 @@ export default function CartDrawer() {
           id: i.id,
           quantity: i.quantity,
           price: i.price,
+          detail: i.detail,
           products: { name: i.name, category: i.category, points: 0 },
         })),
       }
@@ -233,6 +234,14 @@ export default function CartDrawer() {
                         <p className="text-sm text-gray-400">
                           ${item.price.toLocaleString('es-CL')} c/u
                         </p>
+                        <input
+                          type="text"
+                          value={item.detail || ''}
+                          onChange={(e) => updateDetail(item.id, e.target.value)}
+                          placeholder="Nota (ej: sin cebolla)"
+                          maxLength={60}
+                          className="mt-1 w-full text-xs bg-orange-50 border border-orange-100 rounded-lg px-2 py-1 text-gray-600 placeholder-gray-300 focus:outline-none focus:border-orange-300"
+                        />
                       </div>
                       <div className="flex items-center justify-between mt-2">
                         <div className="flex items-center gap-2">

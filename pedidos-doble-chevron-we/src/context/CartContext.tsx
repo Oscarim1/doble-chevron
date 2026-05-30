@@ -8,14 +8,16 @@ export interface CartItem {
   quantity: number
   category: string
   image_url?: string
+  detail?: string
 }
 
 interface CartContextProps {
   items: CartItem[]
   addItem: (item: Omit<CartItem, 'quantity'>) => void
   removeItem: (id: string) => void
-  removeOne: (id: string) => void              // Nuevo: resta 1 unidad, o elimina si llega a cero
-  getQuantity: (id: string) => number          // Nuevo: retorna la cantidad actual (o 0)
+  removeOne: (id: string) => void
+  getQuantity: (id: string) => number
+  updateDetail: (id: string, detail: string) => void
   clearCart: () => void
 }
 
@@ -90,10 +92,14 @@ export function CartProvider({ children, storageKey = 'cart' }: { children: Reac
     return item ? item.quantity : 0
   }
 
+  const updateDetail = (id: string, detail: string) => {
+    setItems((prev) => prev.map((i) => i.id === id ? { ...i, detail } : i))
+  }
+
   const clearCart = () => setItems([])
 
   return (
-    <CartContext.Provider value={{ items, addItem, removeItem, removeOne, getQuantity, clearCart }}>
+    <CartContext.Provider value={{ items, addItem, removeItem, removeOne, getQuantity, updateDetail, clearCart }}>
       {children}
     </CartContext.Provider>
   )
