@@ -124,9 +124,8 @@ export default function CartDrawer() {
         })),
       }
 
-      setSuccess(true)
       downloadTicket(order, payment!)
-
+      setSuccess(true)
       setTimeout(() => {
         setSuccess(false)
         closeDrawer()
