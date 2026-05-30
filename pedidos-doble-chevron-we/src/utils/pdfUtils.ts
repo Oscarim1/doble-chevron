@@ -109,7 +109,7 @@ function calculatePDFHeight(items: OrderItem[]): number {
   items.forEach((item) => {
     const nameLength = item.products.name.length;
     height += nameLength > 18 ? 36 : 23;
-    if (item.detail) height += 12;
+    if (item.detail) height += 14;
   });
 
   height += 20; // total line
@@ -171,10 +171,9 @@ export function generateSinglePDF(order: Order, _title: string, metodoPago?: 'ef
     doc.text(price, pageWidth - margin, yPos, { align: 'right' });
     yPos += 14;
     if (item.detail) {
-      doc.setFontSize(9);
-      doc.text(`  * ${item.detail}`, margin + 4, yPos);
       doc.setFontSize(11);
-      yPos += 12;
+      doc.text(`  * ${item.detail}`, margin + 4, yPos);
+      yPos += 14;
     }
     yPos += 9;
   });
