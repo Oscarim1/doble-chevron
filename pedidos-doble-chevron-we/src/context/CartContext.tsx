@@ -27,28 +27,29 @@ export function useCart() {
   return ctx
 }
 
-export function CartProvider({ children }: { children: ReactNode }) {
+export function CartProvider({ children, storageKey = 'cart' }: { children: ReactNode; storageKey?: string }) {
   const [items, setItems] = useState<CartItem[]>([])
 
   // Load from localStorage
   useEffect(() => {
     try {
-      const stored = localStorage.getItem('cart')
+      const stored = localStorage.getItem(storageKey)
       if (stored) setItems(JSON.parse(stored))
     } catch (err) {
       console.error('CartContext: error al cargar carrito desde localStorage', err)
-      localStorage.removeItem('cart')
+      localStorage.removeItem(storageKey)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Persist to localStorage
   useEffect(() => {
     try {
-      localStorage.setItem('cart', JSON.stringify(items))
+      localStorage.setItem(storageKey, JSON.stringify(items))
     } catch (err) {
       console.error('CartContext: error al guardar carrito en localStorage', err)
     }
-  }, [items])
+  }, [items, storageKey])
 
   const addItem = (item: Omit<CartItem, 'quantity'>) => {
     setItems((prev) => {

@@ -130,9 +130,10 @@ function categorizeItems(items: OrderItem[]) {
 function calculatePDFHeight(order: Order): number {
   const { dobleChevron, papas, bebidas, otros } = categorizeItems(order.order_items);
 
-  let height = 10; // margen inicial
-  height += 35; // logo
-  height += 12; // fecha
+  let height = 12; // margen inicial
+  height += 16; // "DOBLE CHEVRON" bold
+  height += 14; // nº pedido
+  height += 13; // fecha
   height += 15; // método de pago
   height += 15; // separador
 
@@ -140,15 +141,14 @@ function calculatePDFHeight(order: Order): number {
   const countItemsHeight = (items: OrderItem[]) => {
     return items.reduce((acc, item) => {
       const nameLength = item.products.name.length;
-      // Si el nombre es largo (>15 chars), asumimos 2 líneas
       const lines = nameLength > 15 ? 2 : 1;
-      return acc + (lines === 1 ? 22 : 34);
+      return acc + (lines === 1 ? 23 : 36);
     }, 0);
   };
 
-  const sectionHeader = 15;
+  const sectionHeader = 32; // bold label (13pt) + spacing
   const cutLine = 28; // línea punteada (10) + espaciado (18)
-  const logoHeight = 40; // logo adicional antes de papas
+  const secondHeaderHeight = 32; // "DOBLE CHEVRON" repetido en 2do ticket
 
   // Secciones activas
   const sections = [dobleChevron, papas, bebidas, otros].filter(s => s.length > 0);
@@ -161,9 +161,9 @@ function calculatePDFHeight(order: Order): number {
     }
   });
 
-  // Logo adicional antes de papas (si hay dobleChevron y papas)
-  if (dobleChevron.length > 0 && papas.length > 0) {
-    height += logoHeight;
+  // Encabezado repetido en 2do ticket (si hay dobleChevron y más secciones)
+  if (dobleChevron.length > 0 && (papas.length > 0 || bebidas.length > 0 || otros.length > 0)) {
+    height += secondHeaderHeight;
   }
 
   height += 15; // margen final
@@ -181,27 +181,24 @@ export function generateSinglePDF(order: Order, _title: string, metodoPago?: 'ef
   const centerX = pageWidth / 2;
   const margin = 10;
 
-  let yPos = 10;
+  let yPos = 12;
   doc.setFont('Courier');
 
-  // logo
-  doc.addImage(
-    'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-KloLHRepjExrJHt918Q2VWb4HdWvmT.png',
-    'PNG',
-    margin,
-    yPos,
-    pageWidth - margin * 2,
-    25,
-    undefined,
-    'FAST',
-  );
-  yPos += 35;
+  // Encabezado: nombre del negocio
+  doc.setFont('Courier', 'bold');
+  doc.setFontSize(17);
+  doc.text('DOBLE CHEVRON', centerX, yPos, { align: 'center' });
+  yPos += 16;
+
+  doc.setFont('Courier', 'normal');
+  doc.setFontSize(11);
+  doc.text(`Pedido #${order.order_number}`, centerX, yPos, { align: 'center' });
+  yPos += 14;
 
   // fecha
-  doc.setFontSize(10);
   const dateStr = format(new Date(order.created_at), 'dd/MM/yyyy HH:mm');
   doc.text(`Fecha: ${dateStr}`, centerX, yPos, { align: 'center' });
-  yPos += 12;
+  yPos += 13;
 
   // método de pago
   if (metodoPago) {
@@ -209,11 +206,11 @@ export function generateSinglePDF(order: Order, _title: string, metodoPago?: 'ef
     doc.text(`Pago: ${pagoText}`, centerX, yPos, { align: 'center' });
     yPos += 15;
   } else {
-    yPos += 3;
+    yPos += 4;
   }
 
   // separador inicial
-  const sep = '*'.repeat(20);
+  const sep = '-'.repeat(22);
   doc.text(sep, centerX, yPos, { align: 'center' });
   yPos += 15;
 
@@ -222,16 +219,14 @@ export function generateSinglePDF(order: Order, _title: string, metodoPago?: 'ef
 
   // Función auxiliar para renderizar items de una sección
   const renderItems = (items: OrderItem[], isLastSection: boolean, isLastItem: (idx: number) => boolean) => {
+    doc.setFontSize(11);
     items.forEach((item, idx) => {
       const text = `${item.quantity}x ${item.products.name}`;
       if (doc.getTextWidth(text) > maxWidth) {
         const lines = doc.splitTextToSize(text, maxWidth);
         lines.forEach((line: string, lineIdx: number) => {
           doc.text(line, margin, yPos);
-          // Solo agregar espacio entre líneas del mismo item
-          if (lineIdx < lines.length - 1) {
-            yPos += 12;
-          }
+          if (lineIdx < lines.length - 1) yPos += 13;
         });
       } else {
         doc.text(text, margin, yPos);
@@ -240,16 +235,15 @@ export function generateSinglePDF(order: Order, _title: string, metodoPago?: 'ef
       const price = `$${item.price.toLocaleString('es-CL', { minimumFractionDigits: 0 })}`;
       doc.text(price, pageWidth - margin, yPos, { align: 'right' });
 
-      // Menos espacio después del último item de la última sección
       if (isLastSection && isLastItem(idx)) {
-        yPos += 5;
+        yPos += 6;
       } else {
-        yPos += 22;
+        yPos += 23;
       }
     });
   };
 
-  // Función para renderizar línea de corte (solo línea punteada)
+  // Función para renderizar línea de corte
   const renderCutLine = () => {
     yPos += 10;
     doc.setLineDashPattern([3, 3], 0);
@@ -258,7 +252,15 @@ export function generateSinglePDF(order: Order, _title: string, metodoPago?: 'ef
     yPos += 18;
   };
 
-  // Determinar cuál es la última sección con items
+  // Encabezado de sección
+  const renderSectionHeader = (label: string) => {
+    doc.setFont('Courier', 'bold');
+    doc.setFontSize(13);
+    doc.text(label, centerX, yPos, { align: 'center' });
+    yPos += 16;
+    doc.setFont('Courier', 'normal');
+  };
+
   const hasOtros = otros.length > 0;
   const hasBebidas = bebidas.length > 0;
   const hasPapas = papas.length > 0;
@@ -271,68 +273,37 @@ export function generateSinglePDF(order: Order, _title: string, metodoPago?: 'ef
     return !hasOtros && !hasBebidas && !hasPapas && hasDobleChevron;
   };
 
-  // Sección Doble Chevron
   if (hasDobleChevron) {
-    doc.setFontSize(12);
-    doc.text('CHURROS', centerX, yPos, { align: 'center' });
-    yPos += 15;
-    doc.setFontSize(10);
+    renderSectionHeader('DOBLE CHEVRON');
     renderItems(dobleChevron, isLastSection('dobleChevron'), (idx) => idx === dobleChevron.length - 1);
   }
 
-  // Línea de corte después de dobleChevron (si hay más secciones después)
   if (hasDobleChevron && (hasPapas || hasBebidas || hasOtros)) {
     renderCutLine();
+    // Repetir encabezado en el segundo ticket
+    doc.setFont('Courier', 'bold');
+    doc.setFontSize(14);
+    doc.text('DOBLE CHEVRON', centerX, yPos, { align: 'center' });
+    yPos += 16;
+    doc.setFont('Courier', 'normal');
   }
 
-  // Sección Papas (con logo si hay dobleChevron antes)
   if (hasPapas) {
-    // Añadir logo antes de papas si hubo dobleChevron
-    if (hasDobleChevron) {
-      doc.addImage(
-        'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-KloLHRepjExrJHt918Q2VWb4HdWvmT.png',
-        'PNG',
-        margin,
-        yPos,
-        pageWidth - margin * 2,
-        25,
-        undefined,
-        'FAST',
-      );
-      yPos += 35;
-    }
-    doc.setFontSize(12);
-    doc.text('PAPAS FRITAS', centerX, yPos, { align: 'center' });
-    yPos += 15;
-    doc.setFontSize(10);
+    renderSectionHeader('PAPAS FRITAS');
     renderItems(papas, isLastSection('papas'), (idx) => idx === papas.length - 1);
   }
 
-  // Línea de corte después de papas (si hay más secciones después)
-  if (hasPapas && (hasBebidas || hasOtros)) {
-    renderCutLine();
-  }
+  if (hasPapas && (hasBebidas || hasOtros)) renderCutLine();
 
-  // Sección Bebidas
   if (hasBebidas) {
-    doc.setFontSize(12);
-    doc.text('BEBIDAS', centerX, yPos, { align: 'center' });
-    yPos += 15;
-    doc.setFontSize(10);
+    renderSectionHeader('BEBIDAS');
     renderItems(bebidas, isLastSection('bebidas'), (idx) => idx === bebidas.length - 1);
   }
 
-  // Línea de corte después de bebidas (si hay otros)
-  if (hasBebidas && hasOtros) {
-    renderCutLine();
-  }
+  if (hasBebidas && hasOtros) renderCutLine();
 
-  // Sección Otros
   if (hasOtros) {
-    doc.setFontSize(12);
-    doc.text('OTROS', centerX, yPos, { align: 'center' });
-    yPos += 15;
-    doc.setFontSize(10);
+    renderSectionHeader('OTROS');
     renderItems(otros, true, (idx) => idx === otros.length - 1);
   }
 

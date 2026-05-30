@@ -2,15 +2,15 @@
 
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { HiPlus, HiMinus, HiSearch, HiX, HiTrash, HiArrowLeft } from 'react-icons/hi'
+import { HiPlus, HiMinus, HiSearch, HiX, HiTrash } from 'react-icons/hi'
 import { MdQrCodeScanner } from 'react-icons/md'
 import { useCart } from '../../context/CartContext'
 import { fetchWithAuth, getApiUrl } from '@/utils/api'
 import { useLoading } from '../../context/LoadingContext'
 import { useCategorias } from '@/hooks/useCategorias'
 import { getUserIdFromToken } from '@/utils/auth'
-import { generateSinglePDF, Order } from '@/utils/pdfUtils'
-import { format } from 'date-fns'
+import DCTopbar from '../components/DCTopbar'
+import { CartProvider } from '../../context/CartContext'
 
 interface Product {
   id: string
@@ -34,7 +34,80 @@ interface Product {
 const SCANNER_THRESHOLD_MS = 50
 const SCANNER_MIN_CHARS = 3
 
+/* ── Style constants ─────────────────────────────────────── */
+const catBtn = (active: boolean): React.CSSProperties => ({
+  padding: '6px 14px',
+  borderRadius: 999,
+  border: '1.5px solid #221813',
+  background: active ? '#221813' : '#FFFCF6',
+  color: active ? '#FBF1E2' : '#221813',
+  fontSize: 12,
+  fontWeight: 700,
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+  letterSpacing: '0.04em',
+  boxShadow: active ? '0 2px 0 #000' : '0 2px 0 #221813',
+  transition: 'all 70ms ease',
+  whiteSpace: 'nowrap' as const,
+})
+
+const qtyBtn: React.CSSProperties = {
+  width: 26,
+  height: 26,
+  borderRadius: 8,
+  border: '1.5px solid #221813',
+  background: '#FFFCF6',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+  padding: 0,
+  boxShadow: '0 1px 0 #221813',
+  color: '#221813',
+}
+
+const cartQtyBtn: React.CSSProperties = {
+  width: 22,
+  height: 22,
+  borderRadius: 6,
+  border: '1.5px solid #E5D5BA',
+  background: '#F4E8D0',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+  padding: 0,
+  color: '#221813',
+}
+
+const payBtn = (active: boolean): React.CSSProperties => ({
+  padding: '10px',
+  borderRadius: 10,
+  border: `1.5px solid ${active ? '#D8482A' : '#221813'}`,
+  background: active ? '#D8482A' : '#FFFCF6',
+  color: active ? '#FBF1E2' : '#221813',
+  fontWeight: 700,
+  fontSize: 12,
+  letterSpacing: '0.04em',
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+  boxShadow: `0 2px 0 ${active ? '#9A2A0F' : '#221813'}`,
+  transition: 'all 70ms ease',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 4,
+})
+
 export default function AlmacenPage() {
+  return (
+    <CartProvider storageKey="cart-tienda">
+      <AlmacenContent />
+    </CartProvider>
+  )
+}
+
+function AlmacenContent() {
   const [products, setProducts] = useState<Product[]>([])
   const [error, setError] = useState<string | null>(null)
   const [activeCategory, setActiveCategory] = useState('')
@@ -59,10 +132,7 @@ export default function AlmacenPage() {
 
   useEffect(() => {
     const token = localStorage.getItem('token')
-    if (!token) {
-      router.replace('/login')
-      return
-    }
+    if (!token) { router.replace('/login'); return }
 
     setLoading(true)
     const apiUrl = getApiUrl()
@@ -76,7 +146,6 @@ export default function AlmacenPage() {
       .finally(() => setLoading(false))
   }, [router, setLoading])
 
-  // Focus search on mount so scanner can type directly
   useEffect(() => {
     searchInputRef.current?.focus()
   }, [])
@@ -85,12 +154,9 @@ export default function AlmacenPage() {
     const now = Date.now()
     const diff = now - lastKeystrokeTime.current
     lastKeystrokeTime.current = now
-
     if (diff < SCANNER_THRESHOLD_MS) {
       fastKeystrokeCount.current += 1
-      if (fastKeystrokeCount.current >= SCANNER_MIN_CHARS) {
-        setEsEscaneo(true)
-      }
+      if (fastKeystrokeCount.current >= SCANNER_MIN_CHARS) setEsEscaneo(true)
     } else {
       fastKeystrokeCount.current = 0
       setEsEscaneo(false)
@@ -99,15 +165,13 @@ export default function AlmacenPage() {
   }
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && busqueda.trim()) {
-      if (filteredProducts.length === 1) {
-        const p = filteredProducts[0]
-        addItem({ id: p.id, name: p.name, price: parseInt(p.price), image_url: p.image_url, category: p.category })
-        setBusqueda('')
-        setEsEscaneo(false)
-        fastKeystrokeCount.current = 0
-        searchInputRef.current?.focus()
-      }
+    if (e.key === 'Enter' && busqueda.trim() && filteredProducts.length === 1) {
+      const p = filteredProducts[0]
+      addItem({ id: p.id, name: p.name, price: parseInt(p.price), image_url: p.image_url, category: p.category })
+      setBusqueda('')
+      setEsEscaneo(false)
+      fastKeystrokeCount.current = 0
+      searchInputRef.current?.focus()
     }
   }
 
@@ -120,28 +184,16 @@ export default function AlmacenPage() {
 
   const filteredProducts = useMemo(() => {
     if (busqueda.trim()) {
-      const termino = busqueda.toLowerCase()
-      return products.filter(
-        (p) =>
-          p.name.toLowerCase().includes(termino) ||
-          (p.barcode && p.barcode.toLowerCase().includes(termino))
-      )
+      const t = busqueda.toLowerCase()
+      return products.filter(p => p.name.toLowerCase().includes(t) || (p.barcode && p.barcode.toLowerCase().includes(t)))
     }
     if (!activeCategory) return products
-    const activeCat = categorias.find((c) => c.id === activeCategory)
-    return products.filter((p) => {
+    const activeCat = categorias.find(c => c.id === activeCategory)
+    return products.filter(p => {
       if (p.category_id) return p.category_id === activeCategory
-      return activeCat
-        ? (p.category || '').trim().toLowerCase() === activeCat.slug
-        : false
+      return activeCat ? (p.category || '').trim().toLowerCase() === activeCat.slug : false
     })
   }, [products, busqueda, activeCategory, categorias])
-
-  function downloadTicket(order: Order, metodoPago: 'efectivo' | 'tarjeta') {
-    const now = format(new Date(), 'yyyyMMdd_HHmm')
-    const doc = generateSinglePDF(order, 'Doble Chevron', metodoPago)
-    doc.save(`pedido_${order.order_number}_${now}.pdf`)
-  }
 
   const handleConfirm = async () => {
     if (!payment || loadingOrder) return
@@ -171,47 +223,25 @@ export default function AlmacenPage() {
       const orderId = orderData.id
 
       await Promise.all(
-        items.map((item) =>
+        items.map(item =>
           fetchWithAuth(`${apiUrl}/api/order-items`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              order_id: orderId,
-              product_id: item.id,
-              quantity: item.quantity,
-              price: item.price,
-              is_active: true,
-            }),
-          }).then(async (res) => {
-            if (!res.ok) throw new Error(await res.text() || 'Error creando item')
-          })
+            body: JSON.stringify({ order_id: orderId, product_id: item.id, quantity: item.quantity, price: item.price, is_active: true }),
+          }).then(async res => { if (!res.ok) throw new Error(await res.text() || 'Error creando item') })
         )
       )
 
-      const order: Order = {
-        id: orderId,
-        order_number: orderData.order_number ?? orderId,
-        total,
-        created_at: orderData.created_at ?? new Date().toISOString(),
-        order_items: items.map((i) => ({
-          id: i.id,
-          quantity: i.quantity,
-          price: i.price,
-          products: { name: i.name, category: i.category, points: 0 },
-        })),
-      }
-
       setSuccess(true)
-      downloadTicket(order, payment!)
-
       setTimeout(() => {
         setSuccess(false)
         setPayment(null)
         clearCart()
         searchInputRef.current?.focus()
-      }, 2000)
+      }, 2500)
     } catch (err) {
-      setOrderError((err as Error).message || 'Error procesando pedido')
+      console.error('Error confirmando pedido tienda:', err)
+      setOrderError('No se pudo realizar la venta. Intente nuevamente.')
     } finally {
       setLoadingOrder(false)
     }
@@ -219,40 +249,45 @@ export default function AlmacenPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50 text-red-500 font-semibold">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#FBF1E2', color: '#C23A2E', fontWeight: 600, fontFamily: 'inherit' }}>
         {error}
       </div>
     )
   }
 
   return (
-    <div className="h-screen bg-gray-100 flex flex-col overflow-hidden">
-      {/* Top bar */}
-      <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 shrink-0">
-        <button
-          onClick={() => router.push('/select-mode')}
-          className="text-gray-500 hover:text-gray-800 transition p-1 rounded-lg hover:bg-gray-100"
-          aria-label="Volver a selección"
-        >
-          <HiArrowLeft size={22} />
-        </button>
-        <span className="text-xl">🏪</span>
-        <h1 className="text-xl font-extrabold text-gray-800">Tienda</h1>
-        <span className="ml-auto text-sm text-gray-400">{products.length} productos cargados</span>
-      </header>
+    <div style={{
+      height: '100dvh',
+      background: '#F4E8D0',
+      fontFamily: '"DM Sans", var(--font-geist-sans), system-ui, sans-serif',
+      color: '#221813',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
+    }}>
+      <DCTopbar backHref="/select-mode" stationBadge="Tienda" />
 
-      {/* Main layout */}
-      <div className="flex flex-1 overflow-hidden">
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
 
-        {/* LEFT: Product list */}
-        <div className="flex flex-col flex-1 min-h-0 p-4 gap-3">
-          {/* Scanner / search input */}
-          <div className="relative">
-            {esEscaneo ? (
-              <MdQrCodeScanner className="absolute left-3 top-1/2 -translate-y-1/2 text-green-500 text-xl" />
-            ) : (
-              <HiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg" />
-            )}
+        {/* ── LEFT: Products ─────────────────────────────────── */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 16, gap: 12, minHeight: 0, overflow: 'hidden' }}>
+
+          {/* Search / scanner */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            padding: '12px 16px',
+            background: '#FFFCF6',
+            border: `1.5px solid ${esEscaneo ? '#2C7A45' : '#221813'}`,
+            borderRadius: 12,
+            boxShadow: `0 4px 0 ${esEscaneo ? '#2C7A45' : '#221813'}`,
+            transition: 'border-color 150ms ease, box-shadow 150ms ease',
+          }}>
+            {esEscaneo
+              ? <MdQrCodeScanner style={{ color: '#2C7A45', fontSize: 20, flexShrink: 0 }} />
+              : <HiSearch style={{ color: '#4A3A30', fontSize: 18, flexShrink: 0 }} />
+            }
             <input
               ref={searchInputRef}
               type="text"
@@ -260,99 +295,151 @@ export default function AlmacenPage() {
               onChange={handleSearchChange}
               onKeyDown={handleSearchKeyDown}
               placeholder="Escanear código de barras o buscar producto..."
-              className={`w-full pl-10 pr-10 py-3 rounded-xl border bg-white shadow-sm font-medium text-gray-900 outline-none transition-all text-base ${
-                esEscaneo
-                  ? 'border-green-400 ring-2 ring-green-300'
-                  : 'border-gray-200 focus:ring-2 focus:ring-gray-400 focus:border-transparent'
-              }`}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                outline: 'none',
+                fontFamily: 'inherit',
+                fontSize: 15,
+                color: '#221813',
+                flex: 1,
+                minWidth: 0,
+              }}
             />
             {esEscaneo && busqueda && (
-              <span className="absolute right-10 top-1/2 -translate-y-1/2 text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
-                {filteredProducts.length === 1 ? 'Presiona Enter' : 'Escaneando...'}
+              <span style={{
+                fontSize: 10,
+                fontWeight: 800,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                padding: '3px 10px',
+                borderRadius: 999,
+                background: '#DCEFD9',
+                color: '#2C7A45',
+                border: '1.5px solid #2C7A45',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+              }}>
+                {filteredProducts.length === 1 ? 'Enter → agregar' : 'Escaneando...'}
               </span>
             )}
             {busqueda && (
               <button
                 onClick={handleClearSearch}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 7,
+                  border: '1.5px solid #E5D5BA',
+                  background: '#F4E8D0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  padding: 0,
+                  flexShrink: 0,
+                  color: '#4A3A30',
+                }}
               >
-                <HiX className="text-lg" />
+                <HiX size={14} />
               </button>
             )}
           </div>
 
           {/* Category filters */}
-          <div className="flex gap-2 flex-wrap">
-            <button
-              onClick={() => setActiveCategory('')}
-              className={`px-3 py-1.5 rounded-full border text-sm font-medium transition-all
-                ${activeCategory === ''
-                  ? 'bg-gray-800 text-white border-gray-800'
-                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                }`}
-            >
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button onClick={() => setActiveCategory('')} style={catBtn(activeCategory === '')}>
               Todos
             </button>
-            {categorias.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
-                className={`px-3 py-1.5 rounded-full border text-sm font-medium transition-all
-                  ${activeCategory === cat.id
-                    ? 'bg-gray-800 text-white border-gray-800'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                  }`}
-              >
+            {categorias.map(cat => (
+              <button key={cat.id} onClick={() => setActiveCategory(cat.id)} style={catBtn(activeCategory === cat.id)}>
                 {cat.name}
               </button>
             ))}
           </div>
 
+          {/* Product count */}
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#4A3A30' }}>
+            {filteredProducts.length} producto{filteredProducts.length !== 1 ? 's' : ''}
+          </div>
+
           {/* Products grid */}
-          <div className="flex-1 overflow-y-auto">
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {filteredProducts.map((p) => {
-                const qty = items.find((i) => i.id === p.id)?.quantity ?? 0
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10 }}>
+              {filteredProducts.map(p => {
+                const qty = items.find(i => i.id === p.id)?.quantity ?? 0
                 return (
                   <div
                     key={p.id}
-                    className={`bg-white rounded-xl border shadow-sm overflow-hidden flex flex-col transition-all hover:shadow-md ${
-                      qty > 0 ? 'border-orange-300 ring-1 ring-orange-200' : 'border-gray-200'
-                    }`}
+                    style={{
+                      background: '#FFFCF6',
+                      border: `1.5px solid ${qty > 0 ? '#D8482A' : '#221813'}`,
+                      borderRadius: 12,
+                      boxShadow: `0 4px 0 ${qty > 0 ? '#B83918' : '#221813'}`,
+                      overflow: 'hidden',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      transition: 'box-shadow 80ms ease, border-color 80ms ease',
+                    }}
                   >
-                    {p.image_url && (
-                      <img
-                        src={p.image_url}
-                        alt={p.name}
-                        className="w-full h-28 object-cover"
-                      />
-                    )}
-                    <div className="p-3 flex flex-col flex-1">
-                      <p className="font-bold text-gray-900 text-sm leading-tight line-clamp-2">{p.name}</p>
-                      <p className="text-orange-500 font-extrabold text-base mt-1">
+                    {p.image_url
+                      ? <img src={p.image_url} alt={p.name} style={{ width: '100%', height: 90, objectFit: 'cover', display: 'block', borderBottom: '1.5px solid #E5D5BA' }} />
+                      : <div style={{ width: '100%', height: 90, background: '#F4E8D0', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1.5px solid #E5D5BA' }}>
+                          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#C5AE9E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>
+                          </svg>
+                        </div>
+                    }
+                    <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                      <p style={{
+                        fontFamily: 'var(--font-alfa-slab-one), "Alfa Slab One", serif',
+                        fontWeight: 400,
+                        fontSize: 14,
+                        lineHeight: 1.1,
+                        margin: '0 0 4px',
+                        color: '#221813',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                      }}>
+                        {p.name}
+                      </p>
+                      <p style={{
+                        fontFamily: 'var(--font-alfa-slab-one), "Alfa Slab One", serif',
+                        fontSize: 17,
+                        color: '#D8482A',
+                        margin: '0 0 8px',
+                        lineHeight: 1,
+                      }}>
                         ${parseInt(p.price).toLocaleString('es-CL')}
                       </p>
-                      <div className="mt-auto pt-2">
+                      <div style={{ marginTop: 'auto' }}>
                         {qty > 0 ? (
-                          <div className="flex items-center justify-between bg-orange-50 rounded-lg px-2 py-1">
-                            <button
-                              onClick={() => removeOne(p.id)}
-                              className="bg-orange-500 hover:bg-orange-600 text-white rounded-full p-1 transition active:scale-90"
-                            >
-                              <HiMinus size={14} />
-                            </button>
-                            <span className="font-bold text-gray-900 text-sm">{qty}</span>
-                            <button
-                              onClick={() => addItem({ id: p.id, name: p.name, price: parseInt(p.price), image_url: p.image_url, category: p.category })}
-                              className="bg-orange-500 hover:bg-orange-600 text-white rounded-full p-1 transition active:scale-90"
-                            >
-                              <HiPlus size={14} />
-                            </button>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#FBF1E2', borderRadius: 8, padding: '5px 8px', border: '1px solid #E5D5BA' }}>
+                            <button onClick={() => removeOne(p.id)} style={qtyBtn}><HiMinus size={11} /></button>
+                            <span style={{ fontWeight: 800, fontSize: 13, color: '#221813', fontFamily: 'var(--font-alfa-slab-one), serif' }}>{qty}</span>
+                            <button onClick={() => addItem({ id: p.id, name: p.name, price: parseInt(p.price), image_url: p.image_url, category: p.category })} style={qtyBtn}><HiPlus size={11} /></button>
                           </div>
                         ) : (
                           <button
                             onClick={() => addItem({ id: p.id, name: p.name, price: parseInt(p.price), image_url: p.image_url, category: p.category })}
-                            className="w-full bg-gray-800 hover:bg-gray-700 text-white rounded-lg py-1.5 text-sm font-bold transition active:scale-95"
+                            style={{
+                              width: '100%',
+                              padding: '7px',
+                              borderRadius: 8,
+                              border: '1.5px solid #221813',
+                              background: '#221813',
+                              color: '#FBF1E2',
+                              fontSize: 11,
+                              fontWeight: 800,
+                              cursor: 'pointer',
+                              letterSpacing: '0.06em',
+                              textTransform: 'uppercase',
+                              boxShadow: '0 2px 0 #000',
+                              fontFamily: 'inherit',
+                              transition: 'transform 65ms ease',
+                            }}
                           >
                             + Agregar
                           </button>
@@ -363,7 +450,7 @@ export default function AlmacenPage() {
                 )
               })}
               {!filteredProducts.length && (
-                <div className="col-span-full text-center text-gray-400 py-16 text-base">
+                <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '48px 16px', color: '#4A3A30', fontSize: 14 }}>
                   {busqueda ? `Sin resultados para "${busqueda}"` : 'Sin productos en esta categoría'}
                 </div>
               )}
@@ -371,76 +458,153 @@ export default function AlmacenPage() {
           </div>
         </div>
 
-        {/* RIGHT: Inline cart */}
-        <div className="w-80 xl:w-96 bg-white border-l border-gray-200 flex flex-col shrink-0 min-h-0">
+        {/* ── RIGHT: Cart ────────────────────────────────────── */}
+        <div style={{
+          width: 300,
+          borderLeft: '1.5px solid #221813',
+          display: 'flex',
+          flexDirection: 'column',
+          background: '#FFFCF6',
+          flexShrink: 0,
+          minHeight: 0,
+        }}>
           {/* Cart header */}
-          <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
-            <div>
-              <h2 className="font-extrabold text-gray-800 text-base">Carrito</h2>
-              <p className="text-xs text-gray-500">
-                {totalItems === 0 ? 'Vacío' : `${totalItems} ${totalItems === 1 ? 'producto' : 'productos'}`}
-              </p>
+          <div style={{
+            padding: '14px 18px',
+            background: '#221813',
+            color: '#FBF1E2',
+            borderBottom: '3px solid #D8482A',
+            flexShrink: 0,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{
+                  fontFamily: 'var(--font-alfa-slab-one), "Alfa Slab One", serif',
+                  fontWeight: 400,
+                  fontSize: 18,
+                  letterSpacing: '-0.01em',
+                }}>
+                  Carrito
+                </div>
+                <div style={{
+                  fontSize: 10,
+                  color: 'rgba(251,241,226,0.6)',
+                  marginTop: 2,
+                  fontWeight: 700,
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                }}>
+                  {totalItems === 0 ? 'Vacío' : `${totalItems} ${totalItems === 1 ? 'producto' : 'productos'}`}
+                </div>
+              </div>
+              {items.length > 0 && (
+                <button
+                  onClick={clearCart}
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 800,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    color: '#FF7A5C',
+                    background: 'none',
+                    border: '1.5px solid rgba(255,122,92,0.35)',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    padding: '4px 8px',
+                  }}
+                >
+                  Vaciar
+                </button>
+              )}
             </div>
-            {items.length > 0 && (
-              <button
-                onClick={clearCart}
-                className="text-xs text-red-400 hover:text-red-600 font-semibold transition"
-              >
-                Vaciar
-              </button>
-            )}
           </div>
 
           {/* Cart items */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          <div style={{ flex: 1, overflowY: 'auto', padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
             {success ? (
-              <div className="flex flex-col items-center justify-center h-full gap-3 py-8">
-                <svg height={64} width={64} viewBox="0 0 24 24" fill="none">
-                  <circle cx={12} cy={12} r={12} fill="#4ade80" />
-                  <path d="M8 12l2.5 2.5L16 9" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                <p className="text-xl font-bold text-gray-800 text-center">¡Pedido confirmado!</p>
-                <p className="text-gray-400 text-sm text-center">Descargando ticket...</p>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 14, textAlign: 'center', padding: 24 }}>
+                <div style={{
+                  width: 60,
+                  height: 60,
+                  borderRadius: 999,
+                  background: '#DCEFD9',
+                  border: '1.5px solid #221813',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 0 #221813',
+                }}>
+                  <svg height={28} width={28} viewBox="0 0 24 24" fill="none">
+                    <path d="M8 12l2.5 2.5L16 9" stroke="#2C7A45" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <div>
+                  <p style={{ fontFamily: 'var(--font-alfa-slab-one), serif', fontSize: 19, color: '#221813', margin: '0 0 4px' }}>¡Venta realizada!</p>
+                  <p style={{ color: '#2C7A45', fontSize: 12, margin: 0, fontWeight: 600 }}>Pedido registrado correctamente</p>
+                </div>
               </div>
             ) : items.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full gap-2 py-12 text-center">
-                <span className="text-5xl">📦</span>
-                <p className="text-gray-400 text-sm font-medium">Escanea o agrega productos</p>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 10, textAlign: 'center', padding: 24 }}>
+                <div style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 12,
+                  border: '1.5px solid #221813',
+                  background: '#F4E8D0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 3px 0 #221813',
+                }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#221813" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>
+                  </svg>
+                </div>
+                <p style={{ color: '#4A3A30', fontSize: 12, fontWeight: 600, margin: 0, lineHeight: 1.4 }}>
+                  Escanea o agrega<br />productos
+                </p>
               </div>
             ) : (
-              items.map((item) => (
-                <div key={item.id} className="bg-gray-50 rounded-xl p-3 flex gap-2 border border-gray-100">
+              items.map(item => (
+                <div key={item.id} style={{
+                  background: '#FFFCF6',
+                  border: '1.5px solid #E5D5BA',
+                  borderRadius: 10,
+                  padding: 10,
+                  display: 'flex',
+                  gap: 8,
+                }}>
                   {item.image_url && (
                     <img
                       src={item.image_url}
                       alt={item.name}
-                      className="w-12 h-12 object-cover rounded-lg border border-orange-100 shrink-0"
+                      style={{ width: 42, height: 42, objectFit: 'cover', borderRadius: 8, border: '1.5px solid #E5D5BA', flexShrink: 0 }}
                     />
                   )}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-900 text-xs leading-tight line-clamp-2">{item.name}</p>
-                    <p className="text-orange-500 font-bold text-sm mt-0.5">
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{
+                      fontWeight: 700,
+                      fontSize: 12,
+                      color: '#221813',
+                      margin: '0 0 2px',
+                      lineHeight: 1.3,
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }}>
+                      {item.name}
+                    </p>
+                    <p style={{ fontFamily: 'var(--font-alfa-slab-one), serif', fontSize: 14, color: '#D8482A', margin: '0 0 6px', lineHeight: 1 }}>
                       ${(item.price * item.quantity).toLocaleString('es-CL')}
                     </p>
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <button
-                        onClick={() => removeOne(item.id)}
-                        className="bg-orange-100 hover:bg-orange-200 text-orange-500 rounded-full p-1 transition"
-                      >
-                        <HiMinus size={12} />
-                      </button>
-                      <span className="font-bold text-gray-900 text-xs min-w-[18px] text-center">{item.quantity}</span>
-                      <button
-                        onClick={() => addItem({ id: item.id, name: item.name, price: item.price, image_url: item.image_url, category: item.category })}
-                        className="bg-orange-100 hover:bg-orange-200 text-orange-500 rounded-full p-1 transition"
-                      >
-                        <HiPlus size={12} />
-                      </button>
-                      <button
-                        onClick={() => removeItem(item.id)}
-                        className="ml-auto text-red-300 hover:text-red-500 transition p-1 rounded-full hover:bg-red-50"
-                      >
-                        <HiTrash size={14} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <button onClick={() => removeOne(item.id)} style={cartQtyBtn}><HiMinus size={10} /></button>
+                      <span style={{ fontWeight: 800, fontSize: 12, color: '#221813', minWidth: 16, textAlign: 'center' }}>{item.quantity}</span>
+                      <button onClick={() => addItem({ id: item.id, name: item.name, price: item.price, image_url: item.image_url, category: item.category })} style={cartQtyBtn}><HiPlus size={10} /></button>
+                      <button onClick={() => removeItem(item.id)} style={{ ...cartQtyBtn, marginLeft: 'auto', background: 'transparent', border: 'none', color: '#C23A2E' }}>
+                        <HiTrash size={12} />
                       </button>
                     </div>
                   </div>
@@ -451,48 +615,59 @@ export default function AlmacenPage() {
 
           {/* Checkout footer */}
           {!success && items.length > 0 && (
-            <div className="border-t border-gray-200 p-4 space-y-3 bg-gray-50">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500 font-medium">Total</span>
-                <span className="text-2xl font-extrabold text-gray-900">
+            <div style={{
+              borderTop: '1.5px solid #221813',
+              padding: '14px 16px',
+              background: '#F4E8D0',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10,
+              flexShrink: 0,
+            }}>
+              {/* Total */}
+              <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#4A3A30', paddingBottom: 4 }}>Total</span>
+                <span style={{ fontFamily: 'var(--font-alfa-slab-one), "Alfa Slab One", serif', fontSize: 30, color: '#221813', lineHeight: 1 }}>
                   ${total.toLocaleString('es-CL')}
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setPayment('efectivo')}
-                  className={`py-2.5 rounded-xl border-2 font-bold text-sm flex items-center justify-center gap-1 transition-all
-                    ${payment === 'efectivo'
-                      ? 'bg-orange-500 text-white border-orange-500 shadow'
-                      : 'bg-white text-orange-500 border-orange-200 hover:bg-orange-50'
-                    }`}
-                >
+              {/* Payment */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <button onClick={() => setPayment('efectivo')} style={payBtn(payment === 'efectivo')}>
                   💵 Efectivo
                 </button>
-                <button
-                  onClick={() => setPayment('tarjeta')}
-                  className={`py-2.5 rounded-xl border-2 font-bold text-sm flex items-center justify-center gap-1 transition-all
-                    ${payment === 'tarjeta'
-                      ? 'bg-orange-500 text-white border-orange-500 shadow'
-                      : 'bg-white text-orange-500 border-orange-200 hover:bg-orange-50'
-                    }`}
-                >
+                <button onClick={() => setPayment('tarjeta')} style={payBtn(payment === 'tarjeta')}>
                   💳 Tarjeta
                 </button>
               </div>
 
+              {/* Confirm */}
               <button
                 onClick={handleConfirm}
                 disabled={!payment || loadingOrder}
-                className={`w-full py-3 rounded-xl font-bold text-base bg-gradient-to-r from-gray-700 to-gray-900 text-white shadow-lg hover:from-gray-800 hover:to-black transition
-                  ${!payment || loadingOrder ? 'opacity-50 cursor-not-allowed' : ''}`}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: 10,
+                  border: '1.5px solid #221813',
+                  background: !payment || loadingOrder ? '#C5AE9E' : '#221813',
+                  color: '#FBF1E2',
+                  fontSize: 12,
+                  fontWeight: 800,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  cursor: !payment || loadingOrder ? 'not-allowed' : 'pointer',
+                  fontFamily: 'inherit',
+                  boxShadow: !payment || loadingOrder ? 'none' : '0 4px 0 #000',
+                  transition: 'all 70ms ease',
+                }}
               >
                 {loadingOrder ? 'Procesando...' : 'Confirmar pedido'}
               </button>
 
               {orderError && (
-                <p className="text-red-500 text-xs text-center">{orderError}</p>
+                <p style={{ color: '#C23A2E', fontSize: 11, textAlign: 'center', margin: 0 }}>{orderError}</p>
               )}
             </div>
           )}

@@ -9,7 +9,6 @@ import { CartDrawerProvider } from "../context/CartDrawerContext";
 import { LoadingProvider } from "../context/LoadingContext";
 import LoadingOverlay from "./components/LoadingOverlay";
 import RouteChangeHandler from "./components/RouteChangeHandler";
-import CartDrawer from "./components/CartDrawer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -65,7 +64,6 @@ export default function RootLayout({
               <OptionalTopBar />
               <RouteChangeHandler />
               <LoadingOverlay />
-              <CartDrawer />
               {children}
             </CartDrawerProvider>
           </CartProvider>
