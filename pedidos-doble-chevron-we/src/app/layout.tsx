@@ -1,7 +1,7 @@
 // src/app/layout.tsx
 
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Lobster } from "next/font/google";
+import { Geist, Geist_Mono, Lobster, Yellowtail, Alfa_Slab_One } from "next/font/google";
 import "./globals.css";
 import OptionalTopBar from "./components/OptionalTopBar";
 import { CartProvider } from "../context/CartContext";
@@ -27,6 +27,18 @@ const lobster = Lobster({
   variable: "--font-lobster",
 });
 
+const yellowtail = Yellowtail({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-yellowtail",
+});
+
+const alfaSlabOne = Alfa_Slab_One({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-alfa-slab-one",
+});
+
 /**
  * Aquí defines el <title> y el favicon de toda la app.
  */
@@ -46,7 +58,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body className={`${geistSans.variable} ${geistMono.variable} ${lobster.variable} antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} ${lobster.variable} ${yellowtail.variable} ${alfaSlabOne.variable} antialiased`}>
         <LoadingProvider>
           <CartProvider>
             <CartDrawerProvider>

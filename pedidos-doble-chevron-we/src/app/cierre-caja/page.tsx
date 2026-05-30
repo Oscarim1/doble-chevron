@@ -5,7 +5,7 @@ import { fetchWithAuth, getApiUrl } from '@/utils/api'
 import ResumenModal from '../components/ResumenModal'
 import AlertaModal from '../components/AlertaModal'
 import { getUserIdFromToken, getUserRoleFromToken } from '@/utils/auth'
-import { HiCurrencyDollar, HiCreditCard, HiTruck, HiArrowDown, HiArrowUp } from 'react-icons/hi'
+import DCTopbar from '@/app/components/DCTopbar'
 
 interface TotalPorDia {
   fecha: string
@@ -13,8 +13,32 @@ interface TotalPorDia {
   total_por_dia: string
 }
 
-const formatCLP = (value: number) => {
-  return value.toLocaleString('es-CL')
+function CurrencyField({
+  label, value, onChange, inputRef, icon,
+}: {
+  label: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  inputRef?: React.Ref<HTMLInputElement>; icon: React.ReactNode;
+}) {
+  return (
+    <div className="field">
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {icon}{label}
+      </label>
+      <div style={{ position: 'relative' }}>
+        <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#4A3A30', fontWeight: 700, fontSize: 15 }}>$</span>
+        <input
+          ref={inputRef}
+          type="text"
+          inputMode="numeric"
+          value={value}
+          onChange={onChange}
+          placeholder="0"
+          className="dc-input"
+          style={{ paddingLeft: 28, fontSize: 17, fontWeight: 700 }}
+        />
+      </div>
+    </div>
+  )
 }
 
 export default function CierreCajaPage() {
@@ -45,34 +69,27 @@ export default function CierreCajaPage() {
   }, [router])
 
   useEffect(() => {
-    if (step === 'datos' && efectivoRef.current) {
-      efectivoRef.current.focus()
-    }
+    if (step === 'datos' && efectivoRef.current) efectivoRef.current.focus()
   }, [step])
 
   const obtenerTotales = async () => {
     if (!fecha) return
     setTotales([])
-    const apiUrl = getApiUrl();
+    const apiUrl = getApiUrl()
     try {
       const res = await fetchWithAuth(`${apiUrl}/api/orders/total-por-dia?fecha=${fecha}`)
-
       if (res.status === 409) {
         setMensajeAlerta('Ya existe un cierre de caja para esta fecha.')
         setAlertaAbierta(true)
         return
       }
-
       if (!res.ok) throw new Error(await res.text())
-
       const data = await res.json()
-
       if (Array.isArray(data) && data.length === 0) {
         setMensajeAlerta('No hay datos de ventas para esta fecha.')
         setAlertaAbierta(true)
         return
       }
-
       setTotales(data)
       setStep('datos')
     } catch (err) {
@@ -86,27 +103,22 @@ export default function CierreCajaPage() {
     return Number(val.replace(/,/g, '').trim())
   }
 
-  const totalEfectivoApi = parseCLPAmount(
-    totales.find(t => t.metodo_pago === 'efectivo')?.total_por_dia,
-  )
-  const totalMaquinaApi = parseCLPAmount(
-    totales.find(t => t.metodo_pago === 'tarjeta')?.total_por_dia,
-  )
+  const totalEfectivoApi = parseCLPAmount(totales.find(t => t.metodo_pago === 'efectivo')?.total_por_dia)
+  const totalMaquinaApi  = parseCLPAmount(totales.find(t => t.metodo_pago === 'tarjeta')?.total_por_dia)
 
   const parseInputValue = (val: string): number => {
     if (!val || val.trim() === '') return 0
-    // Remover puntos (separador de miles en CLP) y cualquier otro caracter no numerico
     const cleaned = val.replace(/\./g, '').replace(/[^0-9]/g, '')
     if (!cleaned) return 0
     const num = parseInt(cleaned, 10)
     return isNaN(num) ? 0 : num
   }
 
-  const efectivoNum = parseInputValue(efectivo)
-  const maquinaNum = parseInputValue(maquina)
+  const efectivoNum  = parseInputValue(efectivo)
+  const maquinaNum   = parseInputValue(maquina)
   const pedidosYaNum = parseInputValue(pedidosYa)
-  const salidasNum = parseInputValue(salidasEfectivo)
-  const ingresosNum = parseInputValue(ingresosEfectivo)
+  const salidasNum   = parseInputValue(salidasEfectivo)
+  const ingresosNum  = parseInputValue(ingresosEfectivo)
 
   const validarDatos = () => {
     if (efectivoNum < 0 || maquinaNum < 0 || pedidosYaNum < 0 || salidasNum < 0 || ingresosNum < 0) {
@@ -120,12 +132,9 @@ export default function CierreCajaPage() {
   const generarCierre = async () => {
     const userId = getUserIdFromToken()
     if (!fecha || !userId) return
-
     if (!validarDatos()) return
-
-    const apiUrl = getApiUrl();
-    setEnviando(true)
-    setMensaje(null)
+    const apiUrl = getApiUrl()
+    setEnviando(true); setMensaje(null)
     try {
       const res = await fetchWithAuth(`${apiUrl}/api/cierres-caja/generar`, {
         method: 'POST',
@@ -150,23 +159,14 @@ export default function CierreCajaPage() {
     }
   }
 
-  const cuadrado =
-    efectivoNum === totalEfectivoApi &&
-    maquinaNum === totalMaquinaApi
+  const cuadrado = efectivoNum === totalEfectivoApi && maquinaNum === totalMaquinaApi
 
   const handleCloseResumen = () => {
     setShowResumen(false)
     setTimeout(() => {
-      setStep('seleccion')
-      setTotales([])
-      setEfectivo('')
-      setMaquina('')
-      setPedidosYa('')
-      setSalidasEfectivo('')
-      setIngresosEfectivo('')
-      setObservacion('')
-      setMensaje(null)
-      setFecha('')
+      setStep('seleccion'); setTotales([]); setEfectivo(''); setMaquina('')
+      setPedidosYa(''); setSalidasEfectivo(''); setIngresosEfectivo('')
+      setObservacion(''); setMensaje(null); setFecha('')
     }, 100)
   }
 
@@ -176,179 +176,123 @@ export default function CierreCajaPage() {
     return Number(num).toLocaleString('es-CL')
   }
 
-  const handleInputChange = (
-    setter: React.Dispatch<React.SetStateAction<string>>
-  ) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatWithDots(e.target.value)
-    setter(formatted)
-  }
+  const handleInputChange = (setter: React.Dispatch<React.SetStateAction<string>>) =>
+    (e: React.ChangeEvent<HTMLInputElement>) => setter(formatWithDots(e.target.value))
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-100 py-6 px-4">
-      <div className="max-w-xl mx-auto flex flex-col gap-6">
-        <h1 className="text-3xl font-extrabold text-gray-900">Cierre de caja</h1>
+    <div style={{ minHeight: '100dvh', background: '#FBF1E2', color: '#221813' }}>
+      <DCTopbar active="admin" />
+
+      <main className="dc-page dc-page--narrow">
+        <div className="dc-head" style={{ marginBottom: 28 }}>
+          <div className="dc-head__left">
+            <div>
+              <div className="dc-kicker">· Caja ·</div>
+              <h1 className="dc-title">Cierre de Caja</h1>
+              <p className="dc-sub">Registra los montos declarados al cerrar la caja.</p>
+            </div>
+          </div>
+        </div>
 
         {step === 'seleccion' && (
-          <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col gap-4">
-            <label className="text-sm font-bold text-gray-700">Selecciona la fecha</label>
-            <input
-              type="date"
-              value={fecha}
-              onChange={e => setFecha(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 font-semibold focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
-            />
-            <button
-              onClick={obtenerTotales}
-              disabled={!fecha}
-              className="w-full py-3 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition"
-            >
+          <div className="card" style={{ padding: '28px 26px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div className="field">
+              <label>Selecciona la fecha del cierre</label>
+              <input
+                type="date"
+                value={fecha}
+                onChange={e => setFecha(e.target.value)}
+                className="dc-input"
+              />
+            </div>
+            <button className="btn btn--primary btn--block" onClick={obtenerTotales} disabled={!fecha}>
+              <svg viewBox="0 0 24 24" style={{ width: 18, height: 18, stroke: 'currentColor', strokeWidth: 2, fill: 'none' }}><path d="M5 12l5 5 9-9"/></svg>
               Continuar
             </button>
           </div>
         )}
 
         {step === 'datos' && totales.length > 0 && (
-          <div className="flex flex-col gap-4">
-            {/* Formulario de declaracion */}
-            <div className="bg-white rounded-2xl shadow-lg p-5 flex flex-col gap-4">
-              <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide">
-                Montos declarados
-              </h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="card" style={{ padding: '26px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#4A3A30' }}>Montos declarados</div>
 
-              <div className="space-y-1">
-                <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
-                  <HiCurrencyDollar className="text-gray-400" />
-                  Total efectivo
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold">$</span>
-                  <input
-                    ref={efectivoRef}
-                    type="text"
-                    inputMode="numeric"
-                    value={efectivo}
-                    onChange={handleInputChange(setEfectivo)}
-                    placeholder="0"
-                    className="w-full pl-8 pr-4 py-3 rounded-xl border border-gray-200 text-gray-900 font-semibold text-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
-                  />
-                </div>
+              <CurrencyField
+                label="Total efectivo"
+                value={efectivo}
+                onChange={handleInputChange(setEfectivo)}
+                inputRef={efectivoRef}
+                icon={<svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: '#4A3A30', strokeWidth: 2, fill: 'none' }}><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>}
+              />
+
+              <CurrencyField
+                label="Total tarjeta"
+                value={maquina}
+                onChange={handleInputChange(setMaquina)}
+                icon={<svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: '#4A3A30', strokeWidth: 2, fill: 'none' }}><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>}
+              />
+
+              <CurrencyField
+                label="PedidosYa"
+                value={pedidosYa}
+                onChange={handleInputChange(setPedidosYa)}
+                icon={<svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: '#4A3A30', strokeWidth: 2, fill: 'none' }}><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></svg>}
+              />
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <CurrencyField
+                  label="Salidas efectivo"
+                  value={salidasEfectivo}
+                  onChange={handleInputChange(setSalidasEfectivo)}
+                  icon={<svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: '#C23A2E', strokeWidth: 2, fill: 'none' }}><path d="M12 19V5M19 12l-7 7-7-7"/></svg>}
+                />
+                <CurrencyField
+                  label="Ingresos efectivo"
+                  value={ingresosEfectivo}
+                  onChange={handleInputChange(setIngresosEfectivo)}
+                  icon={<svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: '#2C7A45', strokeWidth: 2, fill: 'none' }}><path d="M12 5v14M5 12l7-7 7 7"/></svg>}
+                />
               </div>
 
-              <div className="space-y-1">
-                <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
-                  <HiCreditCard className="text-gray-400" />
-                  Total tarjeta
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold">$</span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={maquina}
-                    onChange={handleInputChange(setMaquina)}
-                    placeholder="0"
-                    className="w-full pl-8 pr-4 py-3 rounded-xl border border-gray-200 text-gray-900 font-semibold text-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
-                  <HiTruck className="text-gray-400" />
-                  Pedidos Ya
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold">$</span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={pedidosYa}
-                    onChange={handleInputChange(setPedidosYa)}
-                    placeholder="0"
-                    className="w-full pl-8 pr-4 py-3 rounded-xl border border-gray-200 text-gray-900 font-semibold text-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
-                    <HiArrowUp className="text-gray-400" />
-                    Salidas
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold">$</span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={salidasEfectivo}
-                      onChange={handleInputChange(setSalidasEfectivo)}
-                      placeholder="0"
-                      className="w-full pl-8 pr-4 py-3 rounded-xl border border-gray-200 text-gray-900 font-semibold text-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
-                    <HiArrowDown className="text-gray-400" />
-                    Ingresos
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold">$</span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={ingresosEfectivo}
-                      onChange={handleInputChange(setIngresosEfectivo)}
-                      placeholder="0"
-                      className="w-full pl-8 pr-4 py-3 rounded-xl border border-gray-200 text-gray-900 font-semibold text-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">
-                  Observacion (opcional)
-                </label>
+              <div className="field">
+                <label>Observación (opcional)</label>
                 <textarea
+                  className="dc-textarea"
+                  rows={2}
                   value={observacion}
                   onChange={e => setObservacion(e.target.value)}
-                  rows={2}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 font-medium resize-none focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
                   placeholder="Notas adicionales..."
                 />
               </div>
 
-              <div className="flex gap-3 pt-2">
+              {mensaje && (
+                <div style={{ background: '#F7D9D5', border: '1px solid #D63B30', borderRadius: 8, padding: '10px 14px' }}>
+                  <p style={{ color: '#C23A2E', fontWeight: 600, fontSize: 13, margin: 0 }}>{mensaje}</p>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
                 <button
-                  onClick={() => {
-                    setStep('seleccion')
-                    setTotales([])
-                  }}
-                  className="flex-1 py-3 rounded-xl border border-gray-200 font-bold text-gray-600 hover:bg-gray-50 transition"
+                  className="btn btn--ghost"
+                  style={{ flex: 1 }}
+                  onClick={() => { setStep('seleccion'); setTotales([]) }}
                 >
                   Volver
                 </button>
                 <button
+                  className="btn btn--primary"
+                  style={{ flex: 1 }}
                   onClick={generarCierre}
                   disabled={enviando}
-                  className="flex-1 py-3 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition"
                 >
-                  {enviando ? 'Guardando...' : 'Confirmar cierre'}
+                  <svg viewBox="0 0 24 24" style={{ width: 16, height: 16, stroke: 'currentColor', strokeWidth: 2, fill: 'none' }}><path d="M5 12l5 5 9-9"/></svg>
+                  {enviando ? 'Guardando…' : 'Confirmar cierre'}
                 </button>
               </div>
             </div>
-
-            {mensaje && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-3">
-                <p className="text-red-600 font-semibold text-sm">{mensaje}</p>
-              </div>
-            )}
           </div>
         )}
-      </div>
+      </main>
 
       <ResumenModal
         isOpen={showResumen}
