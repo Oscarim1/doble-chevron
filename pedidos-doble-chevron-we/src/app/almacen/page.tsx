@@ -52,7 +52,7 @@ export default function AlmacenPage() {
   const router = useRouter()
   const { items, addItem, removeItem, removeOne, clearCart } = useCart()
   const { setLoading } = useLoading()
-  const { data: categorias } = useCategorias()
+  const { data: categorias } = useCategorias(undefined, 'tienda')
 
   const total = items.reduce((acc, i) => acc + i.price * i.quantity, 0)
   const totalItems = items.reduce((acc, i) => acc + i.quantity, 0)
@@ -66,7 +66,7 @@ export default function AlmacenPage() {
 
     setLoading(true)
     const apiUrl = getApiUrl()
-    fetchWithAuth(`${apiUrl}/api/products`)
+    fetchWithAuth(`${apiUrl}/api/products?locationType=tienda`)
       .then(async (res) => {
         if (!res.ok) throw new Error(await res.text() || 'Error cargando productos')
         return res.json()

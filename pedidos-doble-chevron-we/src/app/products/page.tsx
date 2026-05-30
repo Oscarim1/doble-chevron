@@ -41,7 +41,7 @@ export default function ProductsPage() {
   const { items, addItem, getQuantity, removeOne } = useCart()
   const { openDrawer } = useCartDrawer()
   const { setLoading } = useLoading()
-  const { data: categorias } = useCategorias()
+  const { data: categorias } = useCategorias(undefined, 'restaurante')
 
   const totalItems = items.reduce((acc, i) => acc + i.quantity, 0)
 
@@ -55,7 +55,7 @@ export default function ProductsPage() {
     setLoading(true)
 
     const apiUrl = getApiUrl();
-    fetchWithAuth(`${apiUrl}/api/products`)
+    fetchWithAuth(`${apiUrl}/api/products?locationType=restaurante`)
       .then(async (res) => {
         if (!res.ok) {
           const text = await res.text()

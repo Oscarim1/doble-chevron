@@ -3,20 +3,24 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fetchWithAuth, getApiUrl } from '@/utils/api';
 
+export type LocationType = 'tienda' | 'restaurante';
+
 export interface Categoria {
   id: string;
   name: string;
   slug: string;
   parent_id: string | null;
   parent_name: string | null;
+  location_type: LocationType;
 }
 
 export interface CategoriaPayload {
   name: string;
   parent_id?: string | null;
+  location_type?: LocationType;
 }
 
-export function useCategorias(parentId?: string) {
+export function useCategorias(parentId?: string, locationType?: LocationType) {
   const [data, setData] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,9 +30,11 @@ export function useCategorias(parentId?: string) {
     setError(null);
     try {
       const apiUrl = getApiUrl();
-      const url = parentId
-        ? `${apiUrl}/api/categories?parentId=${parentId}`
-        : `${apiUrl}/api/categories`;
+      const params = new URLSearchParams();
+      if (parentId) params.set('parentId', parentId);
+      if (locationType) params.set('locationType', locationType);
+      const query = params.toString();
+      const url = `${apiUrl}/api/categories${query ? `?${query}` : ''}`;
       const response = await fetchWithAuth(url);
       if (!response.ok) {
         const errorText = await response.text();
@@ -42,7 +48,7 @@ export function useCategorias(parentId?: string) {
     } finally {
       setLoading(false);
     }
-  }, [parentId]);
+  }, [parentId, locationType]);
 
   useEffect(() => {
     fetchCategorias();
