@@ -185,17 +185,16 @@ export function generateSinglePDF(order: Order, _title: string, metodoPago?: 'ef
   doc.setFont('Courier');
 
   // Encabezado: nombre del negocio
-  doc.setFont('Courier', 'bold');
-  doc.setFontSize(17);
+  doc.setFontSize(18);
   doc.text('DOBLE CHEVRON', centerX, yPos, { align: 'center' });
-  yPos += 16;
+  yPos += 18;
 
-  doc.setFont('Courier', 'normal');
-  doc.setFontSize(11);
+  doc.setFontSize(12);
   doc.text(`Pedido #${order.order_number}`, centerX, yPos, { align: 'center' });
   yPos += 14;
 
   // fecha
+  doc.setFontSize(11);
   const dateStr = format(new Date(order.created_at), 'dd/MM/yyyy HH:mm');
   doc.text(`Fecha: ${dateStr}`, centerX, yPos, { align: 'center' });
   yPos += 13;
@@ -252,13 +251,12 @@ export function generateSinglePDF(order: Order, _title: string, metodoPago?: 'ef
     yPos += 18;
   };
 
-  // Encabezado de sección
+  // Encabezado de sección (mayúsculas + tamaño 13pt)
   const renderSectionHeader = (label: string) => {
-    doc.setFont('Courier', 'bold');
     doc.setFontSize(13);
     doc.text(label, centerX, yPos, { align: 'center' });
     yPos += 16;
-    doc.setFont('Courier', 'normal');
+    doc.setFontSize(11);
   };
 
   const hasOtros = otros.length > 0;
@@ -280,12 +278,9 @@ export function generateSinglePDF(order: Order, _title: string, metodoPago?: 'ef
 
   if (hasDobleChevron && (hasPapas || hasBebidas || hasOtros)) {
     renderCutLine();
-    // Repetir encabezado en el segundo ticket
-    doc.setFont('Courier', 'bold');
     doc.setFontSize(14);
     doc.text('DOBLE CHEVRON', centerX, yPos, { align: 'center' });
     yPos += 16;
-    doc.setFont('Courier', 'normal');
   }
 
   if (hasPapas) {
