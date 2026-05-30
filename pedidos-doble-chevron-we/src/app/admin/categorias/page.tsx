@@ -11,11 +11,12 @@ import {
   actualizarCategoria,
   eliminarCategoria,
   type Categoria,
+  type LocationType,
 } from '@/hooks/useCategorias'
 import DCTopbar from '@/app/components/DCTopbar'
 
-interface FormState { name: string; parent_id: string }
-const initialForm: FormState = { name: '', parent_id: '' }
+interface FormState { name: string; parent_id: string; location_type: LocationType }
+const initialForm: FormState = { name: '', parent_id: '', location_type: 'tienda' }
 
 export default function AdminCategoriasPage() {
   const router = useRouter()
@@ -37,13 +38,13 @@ export default function AdminCategoriasPage() {
   const posiblesPadres = raices
 
   const openNew = () => { setEditando(null); setForm(initialForm); setErrorForm(null); setModalOpen(true) }
-  const openEdit = (c: Categoria) => { setEditando(c); setForm({ name: c.name, parent_id: c.parent_id || '' }); setErrorForm(null); setModalOpen(true) }
+  const openEdit = (c: Categoria) => { setEditando(c); setForm({ name: c.name, parent_id: c.parent_id || '', location_type: c.location_type || 'tienda' }); setErrorForm(null); setModalOpen(true) }
 
   const handleGuardar = async () => {
     if (!form.name.trim()) { setErrorForm('El nombre es requerido'); return }
     setGuardando(true); setErrorForm(null)
     try {
-      const payload = { name: form.name.trim(), parent_id: form.parent_id || null }
+      const payload = { name: form.name.trim(), parent_id: form.parent_id || null, location_type: form.location_type }
       if (editando) await actualizarCategoria(editando.id, payload)
       else await crearCategoria(payload)
       setModalOpen(false); refetch()
@@ -116,6 +117,9 @@ export default function AdminCategoriasPage() {
                       <span className="cat-slug">/{raiz.slug}</span>
                     </span>
                     <span style={{ flex: 1 }} />
+                    <span className={`badge ${raiz.location_type === 'restaurante' ? 'badge--restaurant' : 'badge--tienda'}`} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 999, fontWeight: 700, background: raiz.location_type === 'restaurante' ? '#FFF3CD' : '#D4EDDA', color: raiz.location_type === 'restaurante' ? '#856404' : '#155724', border: raiz.location_type === 'restaurante' ? '1px solid #FFEAA7' : '1px solid #C3E6CB' }}>
+                      {raiz.location_type === 'restaurante' ? 'Restaurant' : 'Tienda'}
+                    </span>
                     <span style={{ display: 'flex', gap: 8 }}>
                       <button className="icon-btn icon-btn--edit" onClick={() => openEdit(raiz)} title="Editar">
                         <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
@@ -197,6 +201,14 @@ export default function AdminCategoriasPage() {
                       ))}
                     </select>
                     <span className="hint">Si seleccionas una categoría padre, esta será una subcategoría.</span>
+                  </div>
+                  <div className="field">
+                    <label>Localidad <span className="req">*</span></label>
+                    <select className="dc-select" value={form.location_type} onChange={e => setForm({...form, location_type: e.target.value as LocationType})}>
+                      <option value="tienda">Tienda</option>
+                      <option value="restaurante">Restaurante</option>
+                    </select>
+                    <span className="hint">Cambiarlo mueve automáticamente todos los productos de esta categoría.</span>
                   </div>
                   {errorForm && <div style={{ background: '#F7D9D5', borderRadius: 8, padding: '10px 14px' }}><p style={{ color: '#C23A2E', fontWeight: 600, fontSize: 13, margin: 0 }}>{errorForm}</p></div>}
                 </div>

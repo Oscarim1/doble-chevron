@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { fetchWithAuth, getApiUrl } from '@/utils/api';
-
-const API_BASE_URL = getApiUrl();
+import { type LocationType } from './useCategorias';
 
 export interface CategoryInfo {
   id: string;
@@ -11,6 +10,7 @@ export interface CategoryInfo {
   slug: string;
   parent_id: string | null;
   parent_name: string | null;
+  location_type: LocationType;
 }
 
 export interface Producto {
@@ -48,7 +48,7 @@ export interface ProductoPayload {
 
 // Hook para listar productos
 // includeInactive: true para admin (todos los productos), false para tienda (solo activos)
-export function useProductos(includeInactive: boolean = false) {
+export function useProductos(includeInactive: boolean = false, locationType?: LocationType) {
   const [data, setData] = useState<Producto[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,9 +57,12 @@ export function useProductos(includeInactive: boolean = false) {
     setLoading(true);
     setError(null);
     try {
-      const url = includeInactive
-        ? `${API_BASE_URL}/api/products?includeInactive=true`
-        : `${API_BASE_URL}/api/products`;
+      const apiUrl = getApiUrl();
+      const params = new URLSearchParams();
+      if (includeInactive) params.set('includeInactive', 'true');
+      if (locationType) params.set('locationType', locationType);
+      const query = params.toString();
+      const url = `${apiUrl}/api/products${query ? `?${query}` : ''}`;
       const response = await fetchWithAuth(url);
       if (!response.ok) {
         const errorText = await response.text();
@@ -74,7 +77,7 @@ export function useProductos(includeInactive: boolean = false) {
     } finally {
       setLoading(false);
     }
-  }, [includeInactive]);
+  }, [includeInactive, locationType]);
 
   useEffect(() => {
     fetchProductos();
@@ -85,7 +88,7 @@ export function useProductos(includeInactive: boolean = false) {
 
 // Obtener producto por ID
 export async function getProducto(id: string): Promise<Producto> {
-  const response = await fetchWithAuth(`${API_BASE_URL}/api/products/${id}`);
+  const response = await fetchWithAuth(`${getApiUrl()}/api/products/${id}`);
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(errorText || 'Error al obtener producto');
@@ -95,7 +98,7 @@ export async function getProducto(id: string): Promise<Producto> {
 
 // Obtener producto por barcode
 export async function getProductoByBarcode(barcode: string): Promise<Producto> {
-  const response = await fetchWithAuth(`${API_BASE_URL}/api/products/barcode/${encodeURIComponent(barcode)}`);
+  const response = await fetchWithAuth(`${getApiUrl()}/api/products/barcode/${encodeURIComponent(barcode)}`);
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(errorText || 'Producto no encontrado');
@@ -105,7 +108,7 @@ export async function getProductoByBarcode(barcode: string): Promise<Producto> {
 
 // Crear producto
 export async function crearProducto(payload: ProductoPayload): Promise<Producto> {
-  const response = await fetchWithAuth(`${API_BASE_URL}/api/products`, {
+  const response = await fetchWithAuth(`${getApiUrl()}/api/products`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -119,7 +122,7 @@ export async function crearProducto(payload: ProductoPayload): Promise<Producto>
 
 // Actualizar producto
 export async function actualizarProducto(id: string, payload: Partial<ProductoPayload>): Promise<Producto> {
-  const response = await fetchWithAuth(`${API_BASE_URL}/api/products/${id}`, {
+  const response = await fetchWithAuth(`${getApiUrl()}/api/products/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -133,7 +136,7 @@ export async function actualizarProducto(id: string, payload: Partial<ProductoPa
 
 // Eliminar producto
 export async function eliminarProducto(id: string): Promise<void> {
-  const response = await fetchWithAuth(`${API_BASE_URL}/api/products/${id}`, {
+  const response = await fetchWithAuth(`${getApiUrl()}/api/products/${id}`, {
     method: 'DELETE',
   });
   if (!response.ok) {

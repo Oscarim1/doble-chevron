@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { parseTokenPayload } from '@/utils/auth'
+import DCTopbar from '../components/DCTopbar'
 
 /* ─── Panel ──────────────────────────────────────────────── */
 interface PanelProps {
@@ -169,87 +170,7 @@ export default function SelectModePage() {
       flexDirection: 'column',
     }}>
       {/* ── Topbar ── */}
-      <header
-        className="split-stage-topbar"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '20px 40px',
-          background: '#221813',
-          color: '#FBF1E2',
-          flexShrink: 0,
-          borderBottom: '3px solid #D8482A',
-        }}
-      >
-        <span style={{
-          fontFamily: 'var(--font-yellowtail), Yellowtail, cursive',
-          fontSize: 30,
-          color: '#FBF1E2',
-          textShadow: '2px 2px 0 rgba(0,0,0,0.35)',
-          lineHeight: 1,
-          letterSpacing: '-0.01em',
-        }}>
-          Doble Chevron
-        </span>
-
-        <nav
-          className="split-stage-nav"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            fontSize: 11,
-            letterSpacing: '0.12em',
-            textTransform: 'uppercase',
-            fontWeight: 700,
-          }}
-        >
-          {[
-            { label: 'Dashboard', href: '/dashboard' },
-            { label: 'Admin',     href: '/admin' },
-          ].map(({ label, href }) => (
-            <button
-              key={href}
-              onClick={() => router.push(href)}
-              style={{
-                padding: '6px 12px',
-                color: '#FBF1E2',
-                background: 'none',
-                border: 'none',
-                opacity: 0.8,
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                fontSize: 'inherit',
-                letterSpacing: 'inherit',
-                fontWeight: 'inherit',
-                textTransform: 'inherit' as const,
-              }}
-            >
-              {label}
-            </button>
-          ))}
-          <span style={{ opacity: 0.35, padding: '0 4px' }}>·</span>
-          <button
-            onClick={() => router.push('/logout')}
-            style={{
-              padding: '6px 12px',
-              color: '#FBF1E2',
-              background: 'none',
-              border: 'none',
-              opacity: 0.6,
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              fontSize: 'inherit',
-              letterSpacing: 'inherit',
-              fontWeight: 'inherit',
-              textTransform: 'inherit' as const,
-            }}
-          >
-            Cerrar sesión
-          </button>
-        </nav>
-      </header>
+      <DCTopbar />
 
       {/* ── Prompt ── */}
       <div style={{ textAlign: 'center', padding: '36px 20px 24px', flexShrink: 0 }}>

@@ -8,14 +8,16 @@ export interface CartItem {
   quantity: number
   category: string
   image_url?: string
+  detail?: string
 }
 
 interface CartContextProps {
   items: CartItem[]
   addItem: (item: Omit<CartItem, 'quantity'>) => void
   removeItem: (id: string) => void
-  removeOne: (id: string) => void              // Nuevo: resta 1 unidad, o elimina si llega a cero
-  getQuantity: (id: string) => number          // Nuevo: retorna la cantidad actual (o 0)
+  removeOne: (id: string) => void
+  getQuantity: (id: string) => number
+  updateDetail: (id: string, detail: string) => void
   clearCart: () => void
 }
 
@@ -27,28 +29,29 @@ export function useCart() {
   return ctx
 }
 
-export function CartProvider({ children }: { children: ReactNode }) {
+export function CartProvider({ children, storageKey = 'cart' }: { children: ReactNode; storageKey?: string }) {
   const [items, setItems] = useState<CartItem[]>([])
 
   // Load from localStorage
   useEffect(() => {
     try {
-      const stored = localStorage.getItem('cart')
+      const stored = localStorage.getItem(storageKey)
       if (stored) setItems(JSON.parse(stored))
     } catch (err) {
       console.error('CartContext: error al cargar carrito desde localStorage', err)
-      localStorage.removeItem('cart')
+      localStorage.removeItem(storageKey)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Persist to localStorage
   useEffect(() => {
     try {
-      localStorage.setItem('cart', JSON.stringify(items))
+      localStorage.setItem(storageKey, JSON.stringify(items))
     } catch (err) {
       console.error('CartContext: error al guardar carrito en localStorage', err)
     }
-  }, [items])
+  }, [items, storageKey])
 
   const addItem = (item: Omit<CartItem, 'quantity'>) => {
     setItems((prev) => {
@@ -89,10 +92,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return item ? item.quantity : 0
   }
 
+  const updateDetail = (id: string, detail: string) => {
+    setItems((prev) => prev.map((i) => i.id === id ? { ...i, detail } : i))
+  }
+
   const clearCart = () => setItems([])
 
   return (
-    <CartContext.Provider value={{ items, addItem, removeItem, removeOne, getQuantity, clearCart }}>
+    <CartContext.Provider value={{ items, addItem, removeItem, removeOne, getQuantity, updateDetail, clearCart }}>
       {children}
     </CartContext.Provider>
   )

@@ -1,6 +1,5 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { HiX, HiTrash, HiMinus, HiPlus } from 'react-icons/hi'
 import { useRouter } from 'next/navigation'
 import { useCart } from '../../context/CartContext'
 import { useCartDrawer } from '../../context/CartDrawerContext'
@@ -10,7 +9,7 @@ import { getUserIdFromToken } from '@/utils/auth'
 import { format } from 'date-fns'
 
 export default function CartDrawer() {
-  const { items, addItem, removeItem, removeOne, clearCart } = useCart()
+  const { items, addItem, removeItem, removeOne, updateDetail, clearCart } = useCart()
   const { isOpen, closeDrawer } = useCartDrawer()
   const router = useRouter()
   const modalRef = useRef<HTMLDivElement>(null)
@@ -21,8 +20,8 @@ export default function CartDrawer() {
   const [error, setError] = useState<string | null>(null)
 
   const total = items.reduce((acc, i) => acc + i.price * i.quantity, 0)
+  const totalQty = items.reduce((acc, i) => acc + i.quantity, 0)
 
-  // Close on Escape key or click outside
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') closeDrawer()
@@ -44,7 +43,6 @@ export default function CartDrawer() {
     }
   }, [isOpen, closeDrawer])
 
-  // Reset state when modal closes
   useEffect(() => {
     if (!isOpen) {
       setPayment(null)
@@ -64,11 +62,10 @@ export default function CartDrawer() {
     setLoading(true)
     setError(null)
     try {
-      const apiUrl = getApiUrl();
+      const apiUrl = getApiUrl()
       const userId = getUserIdFromToken()
-      if (!userId) {
-        throw new Error('No hay sesión activa. Por favor inicia sesión nuevamente.')
-      }
+      if (!userId) throw new Error('No hay sesión activa. Por favor inicia sesión nuevamente.')
+
       const orderRes = await fetchWithAuth(`${apiUrl}/api/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -120,13 +117,13 @@ export default function CartDrawer() {
           id: i.id,
           quantity: i.quantity,
           price: i.price,
+          detail: i.detail,
           products: { name: i.name, category: i.category, points: 0 },
         })),
       }
 
-      setSuccess(true)
       downloadTicket(order, payment!)
-
+      setSuccess(true)
       setTimeout(() => {
         setSuccess(false)
         closeDrawer()
@@ -140,211 +137,410 @@ export default function CartDrawer() {
     }
   }
 
+  const disabled = !payment || loading
+
   return (
     <>
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity duration-300
-          ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 z-40 transition-opacity duration-300 ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+        style={{ background: 'rgba(34,24,19,0.62)' }}
         aria-hidden={!isOpen}
       />
 
-      {/* Modal Container */}
+      {/* Centering container */}
       <div
-        className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-opacity duration-300
-          ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 z-50 flex items-center justify-center transition-opacity duration-300 ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+        style={{ padding: 28 }}
       >
         {/* Modal */}
         <div
           ref={modalRef}
-          className={`bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col transform transition-all duration-300
-            ${isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
+          className={`w-full flex flex-col transform transition-all duration-300 ${isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
+          style={{
+            maxWidth: 540,
+            maxHeight: 'calc(100vh - 56px)',
+            background: 'var(--dc-cream, #FBF1E2)',
+            border: '2px solid var(--dc-ink, #221813)',
+            borderRadius: 18,
+            boxShadow: '0 10px 0 var(--dc-ink, #221813), 0 30px 60px -20px rgba(0,0,0,0.55)',
+            overflow: 'hidden',
+          }}
+          role="dialog"
+          aria-modal="true"
           aria-label="Carrito de compras"
         >
-          {/* Header */}
-          <div className="flex items-center justify-between px-6 py-5 border-b bg-gradient-to-r from-orange-50 to-yellow-50 rounded-t-3xl">
-            <div className="flex items-center gap-3">
-              <span className="text-3xl">🛒</span>
-              <div>
-                <h2 className="text-2xl font-extrabold text-gray-900">Carrito de compras</h2>
-                <p className="text-sm text-gray-500">
-                  {items.length === 0
-                    ? 'Sin productos'
-                    : `${items.reduce((acc, i) => acc + i.quantity, 0)} productos`}
-                </p>
+          {/* ── Header ── */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 13,
+            padding: '17px 20px',
+            background: 'var(--dc-ink, #221813)',
+            color: 'var(--dc-cream, #FBF1E2)',
+            flexShrink: 0,
+            position: 'relative',
+          }}>
+            {/* Cart icon badge */}
+            <div style={{
+              width: 40, height: 40, flexShrink: 0, borderRadius: 11,
+              background: 'var(--dc-orange, #D8482A)',
+              border: '1.5px solid rgba(0,0,0,0.25)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none"
+                stroke="var(--dc-cream, #FBF1E2)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+                <path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/>
+              </svg>
+            </div>
+
+            {/* Titles */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: 'var(--font-alfa-slab-one, serif)', fontWeight: 400, fontSize: 22, lineHeight: 1 }}>
+                Carrito de compras
+              </div>
+              <div style={{ marginTop: 6, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#F3D58A' }}>
+                {totalQty === 0
+                  ? 'Sin productos'
+                  : `${totalQty} ${totalQty === 1 ? 'producto' : 'productos'}`}
               </div>
             </div>
+
+            {/* Close button */}
             <button
               onClick={closeDrawer}
-              className="text-gray-400 hover:text-gray-600 transition p-2 hover:bg-gray-100 rounded-full"
+              style={{
+                width: 38, height: 38, flexShrink: 0, borderRadius: 10,
+                background: 'rgba(251,241,226,0.07)',
+                border: '1.5px solid rgba(251,241,226,0.28)',
+                color: 'var(--dc-cream, #FBF1E2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer',
+              }}
+              className="cart-close-btn"
               aria-label="Cerrar carrito"
             >
-              <HiX size={28} />
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                <path d="M6 6l12 12M18 6L6 18"/>
+              </svg>
             </button>
+
+            {/* Orange accent bottom line */}
+            <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 3, background: 'var(--dc-orange, #D8482A)' }} />
           </div>
 
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6">
+          {/* ── Item list ── */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
             {success ? (
-              <div className="flex flex-col items-center justify-center py-12 gap-4">
-                <svg height={80} width={80} viewBox="0 0 24 24" fill="none">
-                  <circle cx={12} cy={12} r={12} fill="#4ade80" />
-                  <path
-                    d="M8 12l2.5 2.5L16 9"
-                    stroke="#fff"
-                    strokeWidth={2.5}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
+              /* Success state */
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 28px', gap: 16 }}>
+                <svg height={72} width={72} viewBox="0 0 24 24" fill="none">
+                  <circle cx={12} cy={12} r={12} fill="#4ade80"/>
+                  <path d="M8 12l2.5 2.5L16 9" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                <h3 className="text-3xl font-bold text-gray-800">¡Pedido confirmado!</h3>
-                <p className="text-gray-500 text-center text-lg">
+                <div style={{ fontFamily: 'var(--font-alfa-slab-one, serif)', fontSize: 26, color: 'var(--dc-ink, #221813)' }}>
+                  ¡Pedido confirmado!
+                </div>
+                <p style={{ margin: 0, color: '#7a6a60', fontSize: 15, textAlign: 'center' }}>
                   Tu ticket está siendo descargado...
                 </p>
               </div>
             ) : items.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 gap-4">
-                <span className="text-8xl">🛒</span>
-                <p className="text-xl font-semibold text-gray-500">Tu carrito está vacío</p>
-                <p className="text-gray-400">Agrega productos para comenzar</p>
+              /* Empty state */
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '50px 28px', gap: 14, textAlign: 'center' }}>
+                <div style={{
+                  width: 64, height: 64, borderRadius: 16,
+                  border: '1.5px solid rgba(34,24,19,0.15)',
+                  background: 'rgba(34,24,19,0.04)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none"
+                    stroke="rgba(34,24,19,0.35)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+                    <path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/>
+                  </svg>
+                </div>
+                <p style={{ margin: 0, color: 'rgba(34,24,19,0.5)', fontSize: 14, lineHeight: 1.5 }}>
+                  El carrito está vacío.<br/>Agrega productos para comenzar.
+                </p>
                 <button
                   onClick={closeDrawer}
-                  className="mt-4 px-8 py-3 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition text-lg"
+                  style={{
+                    marginTop: 8, padding: '10px 24px',
+                    background: 'var(--dc-orange, #D8482A)', color: 'var(--dc-cream, #FBF1E2)',
+                    border: '1.5px solid var(--dc-ink, #221813)',
+                    borderRadius: 10, fontFamily: 'inherit', fontWeight: 700, fontSize: 14,
+                    boxShadow: '0 3px 0 var(--dc-ink, #221813)', cursor: 'pointer',
+                  }}
                 >
                   Explorar productos
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="bg-gray-50 border border-gray-100 rounded-2xl p-4 flex gap-4"
-                  >
-                    {item.image_url && (
-                      <img
-                        src={item.image_url}
-                        alt={item.name}
-                        className="w-20 h-20 object-cover rounded-xl border border-orange-100"
-                      />
-                    )}
-                    <div className="flex-1 min-w-0 flex flex-col justify-between">
-                      <div>
-                        <p className="font-bold text-gray-900 truncate">{item.name}</p>
-                        <p className="text-sm text-gray-400">
-                          ${item.price.toLocaleString('es-CL')} c/u
-                        </p>
+              items.map((item) => (
+                <div
+                  key={item.id}
+                  style={{
+                    background: '#FFFCF6',
+                    border: '1.5px solid var(--dc-ink, #221813)',
+                    borderRadius: 14,
+                    boxShadow: '0 4px 0 var(--dc-ink, #221813)',
+                    padding: '14px 15px 13px',
+                    display: 'flex', flexDirection: 'column', gap: 12,
+                  }}
+                >
+                  {/* Top row: name + unit price + line total */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2, color: 'var(--dc-ink, #221813)' }}>
+                        {item.name}
                       </div>
-                      <div className="flex items-center justify-between mt-2">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => removeOne(item.id)}
-                            className="bg-orange-100 hover:bg-orange-200 text-orange-500 rounded-full p-2 transition"
-                            aria-label="Quitar uno"
-                          >
-                            <HiMinus size={16} />
-                          </button>
-                          <span className="font-bold text-gray-900 min-w-[24px] text-center">
-                            {item.quantity}
-                          </span>
-                          <button
-                            onClick={() =>
-                              addItem({
-                                id: item.id,
-                                name: item.name,
-                                price: item.price,
-                                image_url: item.image_url,
-                                category: item.category,
-                              })
-                            }
-                            className="bg-orange-100 hover:bg-orange-200 text-orange-500 rounded-full p-2 transition"
-                            aria-label="Agregar uno"
-                          >
-                            <HiPlus size={16} />
-                          </button>
-                        </div>
-                        <button
-                          onClick={() => removeItem(item.id)}
-                          className="text-red-400 hover:text-red-600 transition p-2 hover:bg-red-50 rounded-full"
-                          aria-label="Eliminar producto"
-                        >
-                          <HiTrash size={20} />
-                        </button>
+                      <div style={{ marginTop: 4, fontSize: 12.5, color: 'rgba(34,24,19,0.5)' }}>
+                        <b style={{ color: 'var(--dc-orange, #D8482A)', fontWeight: 700 }}>
+                          ${item.price.toLocaleString('es-CL')}
+                        </b>{' '}c/u
                       </div>
                     </div>
-                    <div className="flex flex-col items-end justify-center">
-                      <span className="font-extrabold text-gray-800 text-lg">
-                        ${(item.price * item.quantity).toLocaleString('es-CL')}
-                      </span>
+                    <div style={{
+                      flexShrink: 0, textAlign: 'right',
+                      fontFamily: 'var(--font-alfa-slab-one, serif)', fontWeight: 400,
+                      fontSize: 24, lineHeight: 1,
+                      color: 'var(--dc-ink, #221813)',
+                    }}>
+                      ${(item.price * item.quantity).toLocaleString('es-CL')}
                     </div>
                   </div>
-                ))}
-              </div>
+
+                  {/* Note input */}
+                  <div style={{ position: 'relative' }}>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+                      stroke="rgba(34,24,19,0.4)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+                      style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                      <path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
+                    </svg>
+                    <input
+                      type="text"
+                      value={item.detail || ''}
+                      onChange={(e) => updateDetail(item.id, e.target.value)}
+                      placeholder="Nota (ej: sin cebolla)"
+                      maxLength={60}
+                      style={{
+                        width: '100%', boxSizing: 'border-box',
+                        fontFamily: 'inherit', fontSize: 13.5,
+                        color: 'var(--dc-ink, #221813)',
+                        background: 'var(--dc-cream, #FBF1E2)',
+                        border: '1.5px dashed rgba(34,24,19,0.2)',
+                        borderRadius: 9,
+                        padding: '9px 12px 9px 36px',
+                        outline: 'none',
+                        transition: 'border-color 130ms ease, box-shadow 130ms ease, background 130ms ease',
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.background = '#FFFCF6'
+                        e.target.style.borderStyle = 'solid'
+                        e.target.style.borderColor = 'var(--dc-orange, #D8482A)'
+                        e.target.style.boxShadow = '0 0 0 3px rgba(216,72,42,0.16)'
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.background = 'var(--dc-cream, #FBF1E2)'
+                        e.target.style.borderStyle = 'dashed'
+                        e.target.style.borderColor = 'rgba(34,24,19,0.2)'
+                        e.target.style.boxShadow = 'none'
+                      }}
+                    />
+                  </div>
+
+                  {/* Bottom row: stepper + delete */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                    {/* Stepper pill */}
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 4,
+                      background: '#FCEEEA',
+                      border: '1.5px solid var(--dc-orange, #D8482A)',
+                      borderRadius: 999, padding: 3,
+                    }}>
+                      <button
+                        onClick={() => removeOne(item.id)}
+                        style={{
+                          width: 32, height: 32, flexShrink: 0, borderRadius: 999, border: 'none',
+                          background: 'var(--dc-orange, #D8482A)', color: 'var(--dc-cream, #FBF1E2)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          cursor: 'pointer',
+                        }}
+                        aria-label="Quitar uno"
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" strokeWidth="2.8" strokeLinecap="round">
+                          <path d="M5 12h14"/>
+                        </svg>
+                      </button>
+                      <span style={{ minWidth: 30, textAlign: 'center', fontWeight: 800, fontSize: 16, color: 'var(--dc-ink, #221813)' }}>
+                        {item.quantity}
+                      </span>
+                      <button
+                        onClick={() => addItem({
+                          id: item.id, name: item.name, price: item.price,
+                          image_url: item.image_url, category: item.category,
+                        })}
+                        style={{
+                          width: 32, height: 32, flexShrink: 0, borderRadius: 999, border: 'none',
+                          background: 'var(--dc-orange, #D8482A)', color: 'var(--dc-cream, #FBF1E2)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          cursor: 'pointer',
+                        }}
+                        aria-label="Agregar uno"
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" strokeWidth="2.8" strokeLinecap="round">
+                          <path d="M12 5v14M5 12h14"/>
+                        </svg>
+                      </button>
+                    </div>
+
+                    {/* Delete button */}
+                    <button
+                      onClick={() => removeItem(item.id)}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 7,
+                        background: 'none', border: '1.5px solid transparent', borderRadius: 9,
+                        color: '#C23A2E', fontFamily: 'inherit', fontSize: 13, fontWeight: 700,
+                        padding: '7px 11px', cursor: 'pointer',
+                        transition: 'background 130ms ease, border-color 130ms ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#F7D9D5'
+                        e.currentTarget.style.borderColor = '#C23A2E'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'none'
+                        e.currentTarget.style.borderColor = 'transparent'
+                      }}
+                      aria-label="Eliminar producto"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>
+                      </svg>
+                      Quitar
+                    </button>
+                  </div>
+                </div>
+              ))
             )}
           </div>
 
-          {/* Footer - Checkout */}
+          {/* ── Footer ── */}
           {!success && items.length > 0 && (
-            <div className="border-t bg-gray-50 p-6 rounded-b-3xl space-y-4">
-              {/* Total and clear */}
-              <div className="flex items-center justify-between">
+            <div style={{ flexShrink: 0, borderTop: '2px solid var(--dc-ink, #221813)', background: '#F7E8D0' }}>
+              {/* Total row */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, padding: '14px 20px 12px' }}>
                 <button
                   onClick={clearCart}
-                  className="text-sm font-semibold text-orange-600 hover:text-orange-700 transition"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 7,
+                    background: 'none', border: 'none',
+                    color: 'var(--dc-orange, #D8482A)', fontFamily: 'inherit',
+                    fontSize: 13.5, fontWeight: 700, padding: '4px 2px', cursor: 'pointer',
+                  }}
                 >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>
+                  </svg>
                   Vaciar carrito
                 </button>
-                <div className="text-right">
-                  <p className="text-sm text-gray-500">Total a pagar</p>
-                  <p className="text-3xl font-extrabold text-gray-900">
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(34,24,19,0.5)' }}>
+                    Total a pagar
+                  </span>
+                  <span style={{ fontFamily: 'var(--font-alfa-slab-one, serif)', fontWeight: 400, fontSize: 34, lineHeight: 1, color: 'var(--dc-ink, #221813)' }}>
                     ${total.toLocaleString('es-CL')}
-                  </p>
+                  </span>
                 </div>
               </div>
 
-              {/* Payment methods */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Payment + confirm */}
+              <div style={{ padding: '4px 20px 18px' }}>
+                <p style={{ margin: '0 0 9px', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(34,24,19,0.5)' }}>
+                  Método de pago
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 11, marginBottom: 13 }}>
+                  {(['efectivo', 'tarjeta'] as const).map((method) => (
+                    <button
+                      key={method}
+                      onClick={() => setPayment(method)}
+                      style={{
+                        height: 52, borderRadius: 11,
+                        border: '1.5px solid var(--dc-ink, #221813)',
+                        background: payment === method ? 'var(--dc-orange, #D8482A)' : '#FFFCF6',
+                        color: payment === method ? 'var(--dc-cream, #FBF1E2)' : 'var(--dc-ink, #221813)',
+                        fontFamily: 'inherit', fontSize: 14.5, fontWeight: 700,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9,
+                        boxShadow: '0 3px 0 var(--dc-ink, #221813)',
+                        cursor: 'pointer',
+                        transition: 'transform 120ms ease, box-shadow 120ms ease, background 120ms ease',
+                      }}
+                    >
+                      {method === 'efectivo' ? (
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="2" y="6" width="20" height="12" rx="2"/>
+                          <circle cx="12" cy="12" r="2.5"/>
+                          <path d="M6 12h.01M18 12h.01"/>
+                        </svg>
+                      ) : (
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="2" y="5" width="20" height="14" rx="2"/>
+                          <path d="M2 10h20M6 15h4"/>
+                        </svg>
+                      )}
+                      {method === 'efectivo' ? 'Efectivo' : 'Tarjeta'}
+                    </button>
+                  ))}
+                </div>
+
                 <button
-                  type="button"
-                  onClick={() => setPayment('efectivo')}
-                  className={`py-4 rounded-xl border-2 font-bold flex items-center justify-center gap-2 transition-all duration-75
-                    ${
-                      payment === 'efectivo'
-                        ? 'bg-orange-500 text-white border-orange-500 shadow-lg scale-[1.02]'
-                        : 'bg-white text-orange-500 border-orange-200 hover:bg-orange-50'
-                    }`}
+                  onClick={handleConfirm}
+                  disabled={disabled}
+                  style={{
+                    width: '100%', height: 56, borderRadius: 12,
+                    border: `1.5px solid ${disabled ? '#D9B3A4' : 'var(--dc-ink, #221813)'}`,
+                    background: disabled ? '#EBC3B5' : 'var(--dc-orange, #D8482A)',
+                    color: 'var(--dc-cream, #FBF1E2)',
+                    fontFamily: 'inherit', fontSize: 16, fontWeight: 800, letterSpacing: '0.01em',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                    boxShadow: `0 4px 0 ${disabled ? '#D9B3A4' : 'var(--dc-ink, #221813)'}`,
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                    transition: 'transform 120ms ease, box-shadow 120ms ease',
+                  }}
                 >
-                  💵 Efectivo
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12l5 5 9-9"/>
+                  </svg>
+                  {loading ? 'Procesando pedido...' : 'Confirmar pedido'}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setPayment('tarjeta')}
-                  className={`py-4 rounded-xl border-2 font-bold flex items-center justify-center gap-2 transition-all duration-75
-                    ${
-                      payment === 'tarjeta'
-                        ? 'bg-orange-500 text-white border-orange-500 shadow-lg scale-[1.02]'
-                        : 'bg-white text-orange-500 border-orange-200 hover:bg-orange-50'
-                    }`}
-                >
-                  💳 Tarjeta
-                </button>
+
+                {error && (
+                  <p style={{ margin: '10px 0 0', color: '#C23A2E', fontSize: 13, textAlign: 'center' }}>
+                    {error}
+                  </p>
+                )}
               </div>
-
-              {/* Confirm button */}
-              <button
-                className={`w-full py-4 rounded-xl text-lg font-bold bg-gradient-to-r from-orange-400 to-orange-500 text-white shadow-lg hover:from-orange-500 hover:to-orange-600 transition
-                  ${!payment || loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                disabled={!payment || loading}
-                onClick={handleConfirm}
-              >
-                {loading ? 'Procesando pedido...' : 'Confirmar pedido'}
-              </button>
-
-              {error && <p className="text-red-500 text-sm text-center">{error}</p>}
             </div>
           )}
         </div>
       </div>
+
+      <style>{`
+        .cart-close-btn:hover {
+          background: var(--dc-orange, #D8482A) !important;
+          border-color: var(--dc-orange, #D8482A) !important;
+          transform: rotate(90deg);
+        }
+      `}</style>
     </>
   )
 }

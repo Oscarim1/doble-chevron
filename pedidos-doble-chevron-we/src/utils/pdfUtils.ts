@@ -5,6 +5,7 @@ export interface OrderItem {
   id: string;
   quantity: number;
   price: number;
+  detail?: string;
   products: {
     name: string;
     category: string;
@@ -100,241 +101,89 @@ export function generatePDF(
 }
 
 /**
- * Categoriza los items del pedido
- */
-function categorizeItems(items: OrderItem[]) {
-  const dobleChevron: OrderItem[] = [];
-  const papas: OrderItem[] = [];
-  const bebidas: OrderItem[] = [];
-  const otros: OrderItem[] = [];
-
-  items.forEach((item) => {
-    const category = item.products.category.toLowerCase();
-    if (category.includes('dobleChevron')) {
-      dobleChevron.push(item);
-    } else if (category.includes('papas')) {
-      papas.push(item);
-    } else if (category.includes('bebidas')) {
-      bebidas.push(item);
-    } else {
-      otros.push(item);
-    }
-  });
-
-  return { dobleChevron, papas, bebidas, otros };
-}
-
-/**
  * Calcula la altura necesaria para el PDF
  */
-function calculatePDFHeight(order: Order): number {
-  const { dobleChevron, papas, bebidas, otros } = categorizeItems(order.order_items);
+function calculatePDFHeight(items: OrderItem[]): number {
+  let height = 85; // header: margin + title + order# + date + pago + separator
 
-  let height = 10; // margen inicial
-  height += 35; // logo
-  height += 12; // fecha
-  height += 15; // método de pago
-  height += 15; // separador
-
-  // Estimar altura por item (considerar nombres largos que pueden ser multi-línea)
-  const countItemsHeight = (items: OrderItem[]) => {
-    return items.reduce((acc, item) => {
-      const nameLength = item.products.name.length;
-      // Si el nombre es largo (>15 chars), asumimos 2 líneas
-      const lines = nameLength > 15 ? 2 : 1;
-      return acc + (lines === 1 ? 22 : 34);
-    }, 0);
-  };
-
-  const sectionHeader = 15;
-  const cutLine = 28; // línea punteada (10) + espaciado (18)
-  const logoHeight = 40; // logo adicional antes de papas
-
-  // Secciones activas
-  const sections = [dobleChevron, papas, bebidas, otros].filter(s => s.length > 0);
-
-  sections.forEach((section, index) => {
-    height += sectionHeader; // título de sección
-    height += countItemsHeight(section); // items (con estimación de multi-línea)
-    if (index < sections.length - 1) {
-      height += cutLine; // línea de corte (excepto después de la última)
-    }
+  items.forEach((item) => {
+    const nameLength = item.products.name.length;
+    height += nameLength > 18 ? 36 : 23;
+    if (item.detail) height += 14;
   });
 
-  // Logo adicional antes de papas (si hay dobleChevron y papas)
-  if (dobleChevron.length > 0 && papas.length > 0) {
-    height += logoHeight;
-  }
+  height += 20; // total line
+  height += 15; // bottom margin
 
-  height += 15; // margen final
-
-  return Math.max(height, 150); // mínimo 150pt
+  return Math.max(height, 150);
 }
 
 /**
- * Genera un único PDF con todas las categorías separadas por líneas de corte
+ * Genera un único PDF con todos los items en lista plana
  */
 export function generateSinglePDF(order: Order, _title: string, metodoPago?: 'efectivo' | 'tarjeta'): jsPDF {
-  const pdfHeight = calculatePDFHeight(order);
+  const pdfHeight = calculatePDFHeight(order.order_items);
   const doc = new jsPDF({ unit: 'pt', format: [164, pdfHeight] });
   const pageWidth = doc.internal.pageSize.width;
   const centerX = pageWidth / 2;
   const margin = 10;
 
-  let yPos = 10;
+  let yPos = 14;
   doc.setFont('Courier');
 
-  // logo
-  doc.addImage(
-    'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-KloLHRepjExrJHt918Q2VWb4HdWvmT.png',
-    'PNG',
-    margin,
-    yPos,
-    pageWidth - margin * 2,
-    25,
-    undefined,
-    'FAST',
-  );
-  yPos += 35;
+  doc.setFontSize(18);
+  doc.text('DOBLE CHEVRON', centerX, yPos, { align: 'center' });
+  yPos += 20;
 
-  // fecha
-  doc.setFontSize(10);
+  doc.setFontSize(12);
+  doc.text(`Pedido #${order.order_number}`, centerX, yPos, { align: 'center' });
+  yPos += 15;
+
+  doc.setFontSize(11);
   const dateStr = format(new Date(order.created_at), 'dd/MM/yyyy HH:mm');
   doc.text(`Fecha: ${dateStr}`, centerX, yPos, { align: 'center' });
-  yPos += 12;
+  yPos += 13;
 
-  // método de pago
   if (metodoPago) {
     const pagoText = metodoPago === 'efectivo' ? 'EFECTIVO' : 'TARJETA';
     doc.text(`Pago: ${pagoText}`, centerX, yPos, { align: 'center' });
-    yPos += 15;
-  } else {
-    yPos += 3;
+    yPos += 14;
   }
 
-  // separador inicial
-  const sep = '*'.repeat(20);
-  doc.text(sep, centerX, yPos, { align: 'center' });
+  doc.text('-'.repeat(22), centerX, yPos, { align: 'center' });
   yPos += 15;
 
   const maxWidth = pageWidth - margin * 2 - 40;
-  const { dobleChevron, papas, bebidas, otros } = categorizeItems(order.order_items);
 
-  // Función auxiliar para renderizar items de una sección
-  const renderItems = (items: OrderItem[], isLastSection: boolean, isLastItem: (idx: number) => boolean) => {
-    items.forEach((item, idx) => {
-      const text = `${item.quantity}x ${item.products.name}`;
-      if (doc.getTextWidth(text) > maxWidth) {
-        const lines = doc.splitTextToSize(text, maxWidth);
-        lines.forEach((line: string, lineIdx: number) => {
-          doc.text(line, margin, yPos);
-          // Solo agregar espacio entre líneas del mismo item
-          if (lineIdx < lines.length - 1) {
-            yPos += 12;
-          }
-        });
-      } else {
-        doc.text(text, margin, yPos);
-      }
-
-      const price = `$${item.price.toLocaleString('es-CL', { minimumFractionDigits: 0 })}`;
-      doc.text(price, pageWidth - margin, yPos, { align: 'right' });
-
-      // Menos espacio después del último item de la última sección
-      if (isLastSection && isLastItem(idx)) {
-        yPos += 5;
-      } else {
-        yPos += 22;
-      }
-    });
-  };
-
-  // Función para renderizar línea de corte (solo línea punteada)
-  const renderCutLine = () => {
-    yPos += 10;
-    doc.setLineDashPattern([3, 3], 0);
-    doc.line(margin, yPos, pageWidth - margin, yPos);
-    doc.setLineDashPattern([], 0);
-    yPos += 18;
-  };
-
-  // Determinar cuál es la última sección con items
-  const hasOtros = otros.length > 0;
-  const hasBebidas = bebidas.length > 0;
-  const hasPapas = papas.length > 0;
-  const hasDobleChevron = dobleChevron.length > 0;
-
-  const isLastSection = (section: 'dobleChevron' | 'papas' | 'bebidas' | 'otros') => {
-    if (section === 'otros') return hasOtros;
-    if (section === 'bebidas') return !hasOtros && hasBebidas;
-    if (section === 'papas') return !hasOtros && !hasBebidas && hasPapas;
-    return !hasOtros && !hasBebidas && !hasPapas && hasDobleChevron;
-  };
-
-  // Sección Doble Chevron
-  if (hasDobleChevron) {
-    doc.setFontSize(12);
-    doc.text('CHURROS', centerX, yPos, { align: 'center' });
-    yPos += 15;
-    doc.setFontSize(10);
-    renderItems(dobleChevron, isLastSection('dobleChevron'), (idx) => idx === dobleChevron.length - 1);
-  }
-
-  // Línea de corte después de dobleChevron (si hay más secciones después)
-  if (hasDobleChevron && (hasPapas || hasBebidas || hasOtros)) {
-    renderCutLine();
-  }
-
-  // Sección Papas (con logo si hay dobleChevron antes)
-  if (hasPapas) {
-    // Añadir logo antes de papas si hubo dobleChevron
-    if (hasDobleChevron) {
-      doc.addImage(
-        'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-KloLHRepjExrJHt918Q2VWb4HdWvmT.png',
-        'PNG',
-        margin,
-        yPos,
-        pageWidth - margin * 2,
-        25,
-        undefined,
-        'FAST',
-      );
-      yPos += 35;
+  doc.setFontSize(11);
+  order.order_items.forEach((item) => {
+    const text = `${item.quantity}x ${item.products.name}`;
+    if (doc.getTextWidth(text) > maxWidth) {
+      const lines = doc.splitTextToSize(text, maxWidth) as string[];
+      lines.forEach((line, lineIdx) => {
+        doc.text(line, margin, yPos);
+        if (lineIdx < lines.length - 1) yPos += 13;
+      });
+    } else {
+      doc.text(text, margin, yPos);
     }
-    doc.setFontSize(12);
-    doc.text('PAPAS FRITAS', centerX, yPos, { align: 'center' });
-    yPos += 15;
-    doc.setFontSize(10);
-    renderItems(papas, isLastSection('papas'), (idx) => idx === papas.length - 1);
-  }
+    const price = `$${item.price.toLocaleString('es-CL', { minimumFractionDigits: 0 })}`;
+    doc.text(price, pageWidth - margin, yPos, { align: 'right' });
+    yPos += 14;
+    if (item.detail) {
+      doc.setFontSize(11);
+      doc.text(`  * ${item.detail}`, margin + 4, yPos);
+      yPos += 14;
+    }
+    yPos += 9;
+  });
 
-  // Línea de corte después de papas (si hay más secciones después)
-  if (hasPapas && (hasBebidas || hasOtros)) {
-    renderCutLine();
-  }
+  yPos += 4;
+  doc.text('-'.repeat(22), centerX, yPos, { align: 'center' });
+  yPos += 13;
 
-  // Sección Bebidas
-  if (hasBebidas) {
-    doc.setFontSize(12);
-    doc.text('BEBIDAS', centerX, yPos, { align: 'center' });
-    yPos += 15;
-    doc.setFontSize(10);
-    renderItems(bebidas, isLastSection('bebidas'), (idx) => idx === bebidas.length - 1);
-  }
-
-  // Línea de corte después de bebidas (si hay otros)
-  if (hasBebidas && hasOtros) {
-    renderCutLine();
-  }
-
-  // Sección Otros
-  if (hasOtros) {
-    doc.setFontSize(12);
-    doc.text('OTROS', centerX, yPos, { align: 'center' });
-    yPos += 15;
-    doc.setFontSize(10);
-    renderItems(otros, true, (idx) => idx === otros.length - 1);
-  }
+  doc.setFontSize(13);
+  doc.text(`TOTAL  $${order.total.toLocaleString('es-CL', { minimumFractionDigits: 0 })}`, centerX, yPos, { align: 'center' });
 
   return doc;
 }
