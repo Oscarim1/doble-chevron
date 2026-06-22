@@ -45,8 +45,7 @@ export const metadata: Metadata = {
   title: "Doble Chevron",              // <-- nuevo título
   description: "Tus dobleChevron favoritos al instante",
   icons: {
-    icon: "/favicon.ico",               // <-- favicon en public/favicon.ico
-    apple: "/apple-touch-icon.png",     // opcional para iOS
+    icon: "/favicon.svg",
   },
 };
 
